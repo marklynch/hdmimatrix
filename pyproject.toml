@@ -1,0 +1,19 @@
+[project]
+name = "hdmimatrix"
+version = "0.0.1"
+authors = [
+  { name="Mark Lynch", email="marklynch@gmail.com" },
+]
+description = "Python HDMI Matrix control libraryfor AVGear and possibly other HDMI matrix controllers"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+license = "MIT"
+license-files = ["LICEN[CS]E*"]
+
+[project.urls]
+Homepage = "https://github.com/marklynch/hdmimatrix"
+Issues = "https://github.com/marklynch/hdmimatrix/issues"

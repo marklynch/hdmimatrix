@@ -1,10 +1,14 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "hdmimatrix"
-version = "0.0.1"
+version = "0.0.2"
 authors = [
   { name="Mark Lynch", email="marklynch@gmail.com" },
 ]
-description = "Python HDMI Matrix control libraryfor AVGear and possibly other HDMI matrix controllers"
+description = "Python HDMI Matrix control library for AVGear and possibly other HDMI matrix controllers"
 readme = "README.md"
 requires-python = ">=3.9"
 classifiers = [

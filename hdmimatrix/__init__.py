@@ -1,1 +1,1 @@
-from .hdmimatrix import HDMIMatrix
+from .hdmimatrix import HDMIMatrix, AsyncHDMIMatrix

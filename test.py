@@ -33,10 +33,10 @@ def main():
 
     # matrix.disconnect()
     
-    # example_sync_usage()
+    example_sync_usage()
     # asyncio.run(example_async_usage())
 
-    asyncio.run(example_concurrent_operations())
+    # asyncio.run(example_concurrent_operations())
 
 async def example_async_usage():
     """Example of how to use the AsyncHDMIMatrix class"""
@@ -48,9 +48,16 @@ async def example_async_usage():
         name = await matrix.get_device_name()
         print(f"Device name: {name}")
         
-        status = await matrix.get_device_status()
-        print(f"Status: {status}")
+        # status = await matrix.get_device_status()
+        # print(f"Status: {status}")
         
+        status = await matrix.get_video_status()
+        print(f"Video Status: {status}")
+
+        status = await matrix.get_video_status_parsed()
+        print(f"Video Status: {status}")
+
+
         # Route input 1 to output 1
         result = await matrix.route_input_to_output(1, 1)
         print(f"Route result: {result}")
@@ -69,6 +76,12 @@ def example_sync_usage():
         status = matrix.get_device_status()
         print(f"Status: {status}")
         
+        status = matrix.get_video_status()
+        print(f"Video Status: {status}")
+
+        status = matrix.get_video_status_parsed()
+        print(f"Video Status: {status}")
+
         # Route input 1 to output 1
         result = matrix.route_input_to_output(1, 1)
         print(f"Route result: {result}")

@@ -19,6 +19,7 @@ class Commands(Enum):
     TYPE = "/*Type."
     VERSION = "/^Version."
     STATUS = "STA."
+    STATUS_VIDEO = "STA_VIDEO."
 
 
 class BaseHDMIMatrix(ABC):
@@ -83,6 +84,38 @@ class BaseHDMIMatrix(ABC):
         if not 1 <= output <= self.output_count:
             raise ValueError(f"Output must be between 1 and {self.output_count}")
 
+    def parse_video_status(self, status_response: str) -> dict:
+        """
+        Parse video status response into a routing dictionary
+        
+        Args:
+            status_response: Raw response from get_video_status()
+            
+        Returns:
+            dict: Mapping of output number to input number
+            
+        Example:
+            {1: 1, 2: 2, 3: 1, 4: 1}  # output_number: input_number
+        """
+        import re
+        
+        routing = {}
+        
+        # Parse each line of the response
+        for line in status_response.strip().split('\n'):
+            line = line.strip()
+            if not line:
+                continue
+                
+            # Match pattern: "Output XX Switch To In YY!"
+            match = re.search(r'Output\s+(\d+)\s+Switch\s+To\s+In\s+(\d+)!', line)
+            if match:
+                output_num = int(match.group(1))
+                input_num = int(match.group(2))
+                routing[output_num] = input_num
+        
+        return routing
+
     @abstractmethod
     def is_connected(self) -> bool:
         """Check if connection is active"""
@@ -140,6 +173,14 @@ class HDMIMatrix(BaseHDMIMatrix):
 
     def get_device_version(self) -> str:
         return self._process_request(Commands.VERSION.value.encode('ascii'))
+
+    def get_video_status(self) -> str:
+        return self._process_request(Commands.STATUS_VIDEO.value.encode('ascii'))
+
+    def get_video_status_parsed(self) -> dict:
+        """Get video status and return parsed routing dictionary"""
+        status = self.get_video_status()
+        return self.parse_video_status(status)
 
     # Command Methods
     def power_off(self) -> str:
@@ -311,6 +352,14 @@ class AsyncHDMIMatrix(BaseHDMIMatrix):
     async def get_device_version(self) -> str:
         return await self._process_request(Commands.VERSION.value.encode('ascii'))
 
+    async def get_video_status(self) -> str:
+        return await self._process_request(Commands.STATUS_VIDEO.value.encode('ascii'))
+
+    async def get_video_status_parsed(self) -> dict:
+        """Get video status and return parsed routing dictionary"""
+        status = await self.get_video_status()
+        return self.parse_video_status(status)
+
     # Command Methods
     async def power_off(self) -> str:
         """Power off the HDMI matrix"""
@@ -409,3 +458,93 @@ class AsyncHDMIMatrix(BaseHDMIMatrix):
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit"""
         await self.disconnect()
+
+
+# Example usage:
+async def example_async_usage():
+    """Example of how to use the AsyncHDMIMatrix class"""
+    matrix = AsyncHDMIMatrix("192.168.0.178", 4001)
+    
+    # Using async context manager
+    async with matrix:
+        # Get device information
+        name = await matrix.get_device_name()
+        print(f"Device name: {name}")
+        
+        status = await matrix.get_device_status()
+        print(f"Status: {status}")
+        
+        # Route input 1 to output 1
+        result = await matrix.route_input_to_output(1, 1)
+        print(f"Route result: {result}")
+
+def example_sync_usage():
+    """Example of how to use the original HDMIMatrix class"""
+    matrix = HDMIMatrix("192.168.0.178", 4001)
+    
+    # Using sync context manager
+    with matrix:
+        # Get device information
+        name = matrix.get_device_name()
+        print(f"Device name: {name}")
+        
+        status = matrix.get_device_status()
+        print(f"Status: {status}")
+        
+        # Route input 1 to output 1
+        result = matrix.route_input_to_output(1, 1)
+        print(f"Route result: {result}")
+
+async def example_concurrent_operations():
+    """Example showing that async operations are serialized due to TCP connection constraints"""
+    matrix = AsyncHDMIMatrix("192.168.0.178", 4001)
+    
+    async with matrix:
+        # These operations will be serialized due to the connection lock
+        # but they're still async and won't block the event loop
+        tasks = [
+            matrix.get_device_name(),
+            matrix.get_device_status(),
+            matrix.get_device_type(),
+            matrix.get_device_version()
+        ]
+        
+        results = await asyncio.gather(*tasks)
+        print("Results (executed serially due to TCP constraint):", results)
+        
+        # Sequential routing operations
+        await matrix.route_input_to_output(1, 1)
+        await matrix.route_input_to_output(2, 2)
+
+async def example_video_status_parsing():
+    """Example showing how to use the video status parsing"""
+    matrix = AsyncHDMIMatrix("192.168.0.178", 4001)
+    
+    async with matrix:
+        # Get raw video status
+        raw_status = await matrix.get_video_status()
+        print(f"Raw status:\n{raw_status}")
+        
+        # Get parsed video status
+        routing = await matrix.get_video_status_parsed()
+        print(f"\nParsed routing: {routing}")
+        
+        # Show which input is connected to each output
+        print("\nCurrent routing:")
+        for output, input_num in sorted(routing.items()):
+            print(f"  Output {output} <- Input {input_num}")
+
+if __name__ == "__main__":
+    # Run sync example
+    print("Running synchronous example:")
+    example_sync_usage()
+    
+    # Run async examples
+    print("\nRunning asynchronous example:")
+    asyncio.run(example_async_usage())
+    
+    print("\nRunning concurrent operations example:")
+    asyncio.run(example_concurrent_operations())
+    
+    print("\nRunning video status parsing example:")
+    asyncio.run(example_video_status_parsing())

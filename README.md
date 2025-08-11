@@ -3,6 +3,8 @@
 
 Python library to control AVGear HDMI Matrix switches (tested with TMX44PRO AVK, may work with others). Both synchronous and asynchronous APIs are provided. Contributions for other models are welcome!
 
+This is used for the [AVGear Matrix integration for homeassistant](https://github.com/marklynch/hass-avgear-matrix).
+
 Inspired by [pyblackbird](https://github.com/koolsb/pyblackbird/).
 
 ## Features

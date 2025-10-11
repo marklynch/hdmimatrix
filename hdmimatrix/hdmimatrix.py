@@ -20,6 +20,9 @@ class Commands(Enum):
     VERSION = "/^Version."
     STATUS = "STA."
     STATUS_VIDEO = "STA_VIDEO."
+    STATUS_PHDBT = "STA_PHDBT."
+    STATUS_INPUT = "STA_IN."
+    STATUS_OUTPUT = "STA_OUT."
 
 
 class BaseHDMIMatrix(ABC):
@@ -181,6 +184,18 @@ class HDMIMatrix(BaseHDMIMatrix):
         """Get video status and return parsed routing dictionary"""
         status = self.get_video_status()
         return self.parse_video_status(status)
+
+    def get_hdbt_power_status(self) -> str:
+        """Get HDBT power status"""
+        return self._process_request(Commands.STATUS_PHDBT.value.encode('ascii'))
+
+    def get_input_status(self) -> str:
+        """Get connection status of all HDMI input ports"""
+        return self._process_request(Commands.STATUS_INPUT.value.encode('ascii'))
+
+    def get_output_status(self) -> str:
+        """Get connection status of all HDMI output ports"""
+        return self._process_request(Commands.STATUS_OUTPUT.value.encode('ascii'))
 
     # Command Methods
     def power_off(self) -> str:
@@ -359,6 +374,18 @@ class AsyncHDMIMatrix(BaseHDMIMatrix):
         """Get video status and return parsed routing dictionary"""
         status = await self.get_video_status()
         return self.parse_video_status(status)
+
+    async def get_hdbt_power_status(self) -> str:
+        """Get HDBT power status"""
+        return await self._process_request(Commands.STATUS_PHDBT.value.encode('ascii'))
+
+    async def get_input_status(self) -> str:
+        """Get connection status of all HDMI input ports"""
+        return await self._process_request(Commands.STATUS_INPUT.value.encode('ascii'))
+
+    async def get_output_status(self) -> str:
+        """Get connection status of all HDMI output ports"""
+        return await self._process_request(Commands.STATUS_OUTPUT.value.encode('ascii'))
 
     # Command Methods
     async def power_off(self) -> str:

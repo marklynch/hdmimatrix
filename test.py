@@ -33,8 +33,8 @@ def main():
 
     # matrix.disconnect()
     
-    example_sync_usage()
-    # asyncio.run(example_async_usage())
+    # example_sync_usage()
+    asyncio.run(example_async_usage())
 
     # asyncio.run(example_concurrent_operations())
 
@@ -48,6 +48,12 @@ async def example_async_usage():
         name = await matrix.get_device_name()
         print(f"Device name: {name}")
         
+        type = await matrix.get_device_type()
+        print(f"Device type: {type}")
+        
+        version = await matrix.get_device_version()
+        print(f"Device version: {version}")
+
         # status = await matrix.get_device_status()
         # print(f"Status: {status}")
         
@@ -57,6 +63,14 @@ async def example_async_usage():
         status = await matrix.get_video_status_parsed()
         print(f"Video Status: {status}")
 
+        hdbt_power = await matrix.get_hdbt_power_status()
+        print(f"HDBT Power Status: {hdbt_power}")
+
+        input_status = await matrix.get_input_status()
+        print(f"Input Status: {input_status}")
+
+        output_status = await matrix.get_output_status()
+        print(f"Output Status: {output_status}")
 
         # Route input 1 to output 1
         result = await matrix.route_input_to_output(1, 1)
@@ -81,6 +95,15 @@ def example_sync_usage():
 
         status = matrix.get_video_status_parsed()
         print(f"Video Status: {status}")
+
+        hdbt_power = matrix.get_hdbt_power_status()
+        print(f"HDBT Power Status: {hdbt_power}")
+
+        input_status = matrix.get_input_status()
+        print(f"Input Status: {input_status}")
+
+        output_status = matrix.get_output_status()
+        print(f"Output Status: {output_status}")
 
         # Route input 1 to output 1
         result = matrix.route_input_to_output(1, 1)

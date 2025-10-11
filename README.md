@@ -68,9 +68,24 @@ with matrix:
 ## API Overview
 
 - `HDMIMatrix` (sync) and `AsyncHDMIMatrix` (async) classes
-- Connection: `connect()`, `disconnect()`, context manager support
-- Info: `get_device_name()`, `get_device_status()`, `get_device_type()`, `get_device_version()`, `get_video_status()`, `get_video_status_parsed()`
-- Control: `power_on()`, `power_off()`, `route_input_to_output(input, output)`
+- Connection:
+  - `connect()`
+  - `disconnect()`
+  - Context manager support (`with` / `async with`)
+- Info:
+  - `get_device_name()`
+  - `get_device_status()`
+  - `get_device_type()`
+  - `get_device_version()`
+  - `get_video_status()`
+  - `get_video_status_parsed()`
+  - `get_hdbt_power_status()`
+  - `get_input_status()`
+  - `get_output_status()`
+- Control:
+  - `power_on()`
+  - `power_off()`
+  - `route_input_to_output(input, output)`
 
 ## Contributing
 

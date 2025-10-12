@@ -23,6 +23,9 @@ class Commands(Enum):
     STATUS_PHDBT = "STA_PHDBT."
     STATUS_INPUT = "STA_IN."
     STATUS_OUTPUT = "STA_OUT."
+    ROUTE_OUTPUT = "OUT{:02d}:{:02d}."
+    OUTPUT_ON = "@OUT{:02d}."
+    OUTPUT_OFF = "$OUT{:02d}."
 
 
 class BaseHDMIMatrix(ABC):
@@ -209,7 +212,19 @@ class HDMIMatrix(BaseHDMIMatrix):
     def route_input_to_output(self, input: int, output: int) -> str:
         """Select HDMI input to route to HDMI output"""
         self._validate_routing_params(input, output)
-        return self._process_request(f"OUT{output:02d}:{input:02d}.".encode('ascii'))
+        return self._process_request(Commands.ROUTE_OUTPUT.value.format(output, input).encode('ascii'))
+
+    def output_on(self, output: int) -> str:
+        """Turn on specific HDMI output"""
+        if not 1 <= output <= self.output_count:
+            raise ValueError(f"Output must be between 1 and {self.output_count}")
+        return self._process_request(Commands.OUTPUT_ON.value.format(output).encode('ascii'))
+
+    def output_off(self, output: int) -> str:
+        """Turn off specific HDMI output"""
+        if not 1 <= output <= self.output_count:
+            raise ValueError(f"Output must be between 1 and {self.output_count}")
+        return self._process_request(Commands.OUTPUT_OFF.value.format(output).encode('ascii'))
 
     # Internal methods
     def _process_request(self, request: bytes) -> str:
@@ -399,7 +414,19 @@ class AsyncHDMIMatrix(BaseHDMIMatrix):
     async def route_input_to_output(self, input: int, output: int) -> str:
         """Select HDMI input to route to HDMI output"""
         self._validate_routing_params(input, output)
-        return await self._process_request(f"OUT{output:02d}:{input:02d}.".encode('ascii'))
+        return await self._process_request(Commands.ROUTE_OUTPUT.value.format(output, input).encode('ascii'))
+
+    async def output_on(self, output: int) -> str:
+        """Turn on specific HDMI output"""
+        if not 1 <= output <= self.output_count:
+            raise ValueError(f"Output must be between 1 and {self.output_count}")
+        return await self._process_request(Commands.OUTPUT_ON.value.format(output).encode('ascii'))
+
+    async def output_off(self, output: int) -> str:
+        """Turn off specific HDMI output"""
+        if not 1 <= output <= self.output_count:
+            raise ValueError(f"Output must be between 1 and {self.output_count}")
+        return await self._process_request(Commands.OUTPUT_OFF.value.format(output).encode('ascii'))
 
     # Internal methods
     async def _process_request(self, request: bytes) -> str:

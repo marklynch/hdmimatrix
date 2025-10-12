@@ -76,6 +76,13 @@ async def example_async_usage():
         result = await matrix.route_input_to_output(1, 1)
         print(f"Route result: {result}")
 
+        # Test output power control
+        result = await matrix.output_on(1)
+        print(f"Output 1 ON result: {result}")
+
+        result = await matrix.output_off(1)
+        print(f"Output 1 OFF result: {result}")
+
 
 def example_sync_usage():
     """Example of how to use the original HDMIMatrix class"""
@@ -108,6 +115,13 @@ def example_sync_usage():
         # Route input 1 to output 1
         result = matrix.route_input_to_output(1, 1)
         print(f"Route result: {result}")
+
+        # Test output power control
+        result = matrix.output_on(1)
+        print(f"Output 1 ON result: {result}")
+
+        result = matrix.output_off(1)
+        print(f"Output 1 OFF result: {result}")
 
 
 

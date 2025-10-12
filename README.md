@@ -86,6 +86,8 @@ with matrix:
   - `power_on()`
   - `power_off()`
   - `route_input_to_output(input, output)`
+  - `output_on(output)`
+  - `output_off(output)`
 
 ## Contributing
 

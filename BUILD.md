@@ -1,4 +1,4 @@
-Deploy instructions
+# Deploy instructions
 
 ## Dependencies
 ```
@@ -10,14 +10,14 @@ pip3 install build twine
 python -m build
 ```
 
-
-Test upload
+## Test upload. 
+To: https://testpypi.org/project/hdmimatrix/
 ```
 python3 -m twine upload --repository testpypi dist/*
 ```
 
-
-Real upload
+## Real upload.
+To:  https://pypi.org/project/hdmimatrix/
 ```
 python3 -m twine upload dist/*
 ```

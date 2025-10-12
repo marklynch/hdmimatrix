@@ -72,6 +72,12 @@ async def example_async_usage():
         output_status = await matrix.get_output_status()
         print(f"Output Status: {output_status}")
 
+        hdcp_status = await matrix.get_hdcp_status()
+        print(f"HDCP Status: {hdcp_status}")
+
+        downscaling_status = await matrix.get_downscaling_status()
+        print(f"Downscaling Status: {downscaling_status}")
+
         # Route input 1 to output 1
         result = await matrix.route_input_to_output(1, 1)
         print(f"Route result: {result}")
@@ -111,6 +117,12 @@ def example_sync_usage():
 
         output_status = matrix.get_output_status()
         print(f"Output Status: {output_status}")
+
+        hdcp_status = matrix.get_hdcp_status()
+        print(f"HDCP Status: {hdcp_status}")
+
+        downscaling_status = matrix.get_downscaling_status()
+        print(f"Downscaling Status: {downscaling_status}")
 
         # Route input 1 to output 1
         result = matrix.route_input_to_output(1, 1)

@@ -82,6 +82,8 @@ with matrix:
   - `get_hdbt_power_status()`
   - `get_input_status()`
   - `get_output_status()`
+  - `get_hdcp_status()`
+  - `get_downscaling_status()`
 - Control:
   - `power_on()`
   - `power_off()`

@@ -23,6 +23,8 @@ class Commands(Enum):
     STATUS_PHDBT = "STA_PHDBT."
     STATUS_INPUT = "STA_IN."
     STATUS_OUTPUT = "STA_OUT."
+    STATUS_HDCP = "STA_HDCP."
+    STATUS_DOWNSCALING = "STA_DS."
     ROUTE_OUTPUT = "OUT{:02d}:{:02d}."
     OUTPUT_ON = "@OUT{:02d}."
     OUTPUT_OFF = "$OUT{:02d}."
@@ -52,7 +54,7 @@ class BaseHDMIMatrix(ABC):
         # Initialise logging if logger is not passed in.
         if logger is None:
             self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
-            self.logger.setLevel('DEBUG')
+            self.logger.setLevel('INFO')
 
             # Create formatter
             formatter = logging.Formatter(
@@ -199,6 +201,14 @@ class HDMIMatrix(BaseHDMIMatrix):
     def get_output_status(self) -> str:
         """Get connection status of all HDMI output ports"""
         return self._process_request(Commands.STATUS_OUTPUT.value.encode('ascii'))
+
+    def get_hdcp_status(self) -> str:
+        """Get HDCP status information"""
+        return self._process_request(Commands.STATUS_HDCP.value.encode('ascii'))
+
+    def get_downscaling_status(self) -> str:
+        """Get downscaling status of each output"""
+        return self._process_request(Commands.STATUS_DOWNSCALING.value.encode('ascii'))
 
     # Command Methods
     def power_off(self) -> str:
@@ -401,6 +411,14 @@ class AsyncHDMIMatrix(BaseHDMIMatrix):
     async def get_output_status(self) -> str:
         """Get connection status of all HDMI output ports"""
         return await self._process_request(Commands.STATUS_OUTPUT.value.encode('ascii'))
+
+    async def get_hdcp_status(self) -> str:
+        """Get HDCP status information"""
+        return await self._process_request(Commands.STATUS_HDCP.value.encode('ascii'))
+
+    async def get_downscaling_status(self) -> str:
+        """Get downscaling status of each output"""
+        return await self._process_request(Commands.STATUS_DOWNSCALING.value.encode('ascii'))
 
     # Command Methods
     async def power_off(self) -> str:

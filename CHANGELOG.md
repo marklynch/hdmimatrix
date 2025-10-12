@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.6] - 2025-10-13
+### Added
+- Support for `get_hdcp_status()` and `get_downscaling_status()` commands.
+
+## [0.0.5] - 2025-10-13
+### Added
+- Support for `output_on` and `output_off` commands.
+
 ## [0.0.4] - 2025-10-11
 ### Added
 - Support for `get_hdbt_power_status` and `get_input_status` and `get_output_status` commands.

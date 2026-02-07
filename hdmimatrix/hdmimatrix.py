@@ -124,6 +124,10 @@ class BaseHDMIMatrix(ABC):
         
         return routing
 
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.host}:{self.port}, connected={self.is_connected})"
+ 
+ 
     @abstractmethod
     def is_connected(self) -> bool:
         """Check if connection is active"""
@@ -160,6 +164,9 @@ class HDMIMatrix(BaseHDMIMatrix):
 
         except Exception as e:
             self.logger.error(f"Connection failed: {e}")
+            if self.connection:
+                self.connection.close()
+                self.connection = None
             return False
 
     def disconnect(self):

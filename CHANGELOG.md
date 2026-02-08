@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Use `logging.INFO` instead of `'INFO'` string when setting loglevel
 - Cleanup extra whitespace in file
+- Refactored `HDMIMatrix` and `AsyncHDMIMatrix` to reduce duplicated code
 
 ### Fixed
 ### Removed

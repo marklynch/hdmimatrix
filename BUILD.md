@@ -7,7 +7,7 @@ pip3 install build twine
 
 ## Build it
 ```
-python -m build
+python3 -m build
 ```
 
 ## Test upload. 

@@ -124,9 +124,10 @@ class TestContextManager:
 
 class TestProcessRequest:
 
-    def test_raises_when_not_connected(self, sync_matrix):
+    def test_raises_when_not_connected_and_reconnect_disabled(self):
+        matrix = HDMIMatrix(TEST_HOST, TEST_PORT, auto_reconnect=False)
         with pytest.raises(RuntimeError, match="Not connected"):
-            sync_matrix._process_request(b"STA.")
+            matrix._process_request(b"STA.")
 
     def test_sends_command_bytes(self, connected_sync_matrix):
         matrix, mock_sock = connected_sync_matrix
@@ -149,6 +150,64 @@ class TestProcessRequest:
             result = matrix._process_request(b"STA.")
 
         assert result == "Device OK"
+
+    def test_auto_reconnects_when_not_connected(self):
+        matrix = HDMIMatrix(TEST_HOST, TEST_PORT, auto_reconnect=True)
+        # Not connected, auto_reconnect should call connect() then process
+        with patch.object(matrix, "connect", return_value=True) as mock_connect, \
+             patch.object(matrix, "_read_response", return_value="OK"):
+            # After connect, simulate connected state
+            mock_sock = MagicMock()
+            def set_connected():
+                matrix.connection = mock_sock
+                return True
+            mock_connect.side_effect = set_connected
+
+            result = matrix._process_request(b"STA.")
+
+        mock_connect.assert_called_once()
+        mock_sock.send.assert_called_once_with(b"STA.")
+        assert result == "OK"
+
+    def test_auto_reconnect_fails_raises_error(self):
+        matrix = HDMIMatrix(TEST_HOST, TEST_PORT, auto_reconnect=True)
+        with patch.object(matrix, "connect", return_value=False):
+            with pytest.raises(RuntimeError, match="auto-reconnect failed"):
+                matrix._process_request(b"STA.")
+
+    def test_retries_on_send_failure(self, connected_sync_matrix):
+        matrix, mock_sock = connected_sync_matrix
+        # First send raises OSError, reconnect succeeds, retry succeeds
+        mock_sock.send.side_effect = [OSError("Broken pipe"), None]
+
+        with patch.object(matrix, "connect", return_value=True) as mock_connect, \
+             patch.object(matrix, "_read_response", return_value="OK"):
+            def restore_connection():
+                matrix.connection = mock_sock
+                return True
+            mock_connect.side_effect = restore_connection
+
+            result = matrix._process_request(b"STA.")
+
+        mock_connect.assert_called_once()
+        assert result == "OK"
+
+    def test_reconnect_fails_on_send_failure_raises_error(self, connected_sync_matrix):
+        matrix, mock_sock = connected_sync_matrix
+        mock_sock.send.side_effect = OSError("Broken pipe")
+
+        with patch.object(matrix, "connect", return_value=False):
+            with pytest.raises(RuntimeError, match="Connection lost"):
+                matrix._process_request(b"STA.")
+
+    def test_no_retry_when_reconnect_disabled(self):
+        matrix = HDMIMatrix(TEST_HOST, TEST_PORT, auto_reconnect=False)
+        mock_sock = MagicMock()
+        mock_sock.send.side_effect = OSError("Broken pipe")
+        matrix.connection = mock_sock
+
+        with pytest.raises(RuntimeError, match="Connection lost"):
+            matrix._process_request(b"STA.")
 
 
 # --- _read_response ---

@@ -221,9 +221,10 @@ class TestAsyncContextManager:
 
 class TestAsyncProcessRequest:
 
-    async def test_raises_when_not_connected(self, async_matrix):
+    async def test_raises_when_not_connected_and_reconnect_disabled(self):
+        matrix = AsyncHDMIMatrix(TEST_HOST, TEST_PORT, auto_reconnect=False)
         with pytest.raises(RuntimeError, match="Not connected"):
-            await async_matrix._process_request(b"STA.")
+            await matrix._process_request(b"STA.")
 
     async def test_sends_and_drains(self, connected_async_matrix):
         matrix, mock_reader, mock_writer = connected_async_matrix
@@ -241,6 +242,85 @@ class TestAsyncProcessRequest:
             result = await matrix._process_request(b"STA.")
 
         assert result == "Device OK"
+
+    async def test_auto_reconnects_when_not_connected(self):
+        matrix = AsyncHDMIMatrix(TEST_HOST, TEST_PORT, auto_reconnect=True)
+
+        mock_writer = MagicMock()
+        mock_writer.write = MagicMock()
+        mock_writer.drain = AsyncMock()
+        mock_writer.is_closing = MagicMock(return_value=False)
+
+        async def fake_connect():
+            matrix.writer = mock_writer
+            matrix.reader = MagicMock()
+            matrix._connection_lock = asyncio.Lock()
+            return True
+
+        with patch.object(matrix, "connect", side_effect=fake_connect) as mock_connect, \
+             patch.object(matrix, "_read_response", new_callable=AsyncMock, return_value="OK"):
+            result = await matrix._process_request(b"STA.")
+
+        mock_connect.assert_called_once()
+        mock_writer.write.assert_called_once_with(b"STA.")
+        assert result == "OK"
+
+        # Cleanup
+        matrix.writer = None
+        matrix.reader = None
+        matrix._connection_lock = None
+
+    async def test_auto_reconnect_fails_raises_error(self):
+        matrix = AsyncHDMIMatrix(TEST_HOST, TEST_PORT, auto_reconnect=True)
+        with patch.object(matrix, "connect", new_callable=AsyncMock, return_value=False):
+            with pytest.raises(RuntimeError, match="auto-reconnect failed"):
+                await matrix._process_request(b"STA.")
+
+    async def test_retries_on_send_failure(self, connected_async_matrix):
+        matrix, mock_reader, mock_writer = connected_async_matrix
+        # First drain raises OSError, reconnect succeeds, retry succeeds
+        mock_writer.drain = AsyncMock(side_effect=[OSError("Broken pipe"), None])
+
+        async def fake_connect():
+            matrix.writer = mock_writer
+            matrix.reader = mock_reader
+            matrix._connection_lock = asyncio.Lock()
+            return True
+
+        with patch.object(matrix, "connect", side_effect=fake_connect) as mock_connect, \
+             patch.object(matrix, "_read_response", new_callable=AsyncMock, return_value="OK"):
+            result = await matrix._process_request(b"STA.")
+
+        mock_connect.assert_called_once()
+        assert result == "OK"
+
+    async def test_reconnect_fails_on_send_failure_raises_error(self, connected_async_matrix):
+        matrix, mock_reader, mock_writer = connected_async_matrix
+        mock_writer.drain = AsyncMock(side_effect=OSError("Broken pipe"))
+
+        with patch.object(matrix, "connect", new_callable=AsyncMock, return_value=False):
+            with pytest.raises(RuntimeError, match="Connection lost"):
+                await matrix._process_request(b"STA.")
+
+    async def test_no_retry_when_reconnect_disabled(self):
+        matrix = AsyncHDMIMatrix(TEST_HOST, TEST_PORT, auto_reconnect=False)
+        mock_writer = MagicMock()
+        mock_writer.write = MagicMock()
+        mock_writer.drain = AsyncMock(side_effect=OSError("Broken pipe"))
+        mock_writer.close = MagicMock()
+        mock_writer.wait_closed = AsyncMock()
+        mock_writer.is_closing = MagicMock(return_value=False)
+        matrix.writer = mock_writer
+        matrix.reader = MagicMock()
+        matrix._connection_lock = asyncio.Lock()
+
+        with pytest.raises(RuntimeError, match="Connection lost"):
+            await matrix._process_request(b"STA.")
+
+        # Cleanup
+        matrix.writer = None
+        matrix.reader = None
+        matrix._connection_lock = None
 
 
 # --- _read_response ---

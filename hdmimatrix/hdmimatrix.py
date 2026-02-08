@@ -34,7 +34,8 @@ class BaseHDMIMatrix(ABC):
     """Base class for HDMI Matrix controllers with shared functionality"""
 
     def __init__(self, host: str = "192.168.0.178", port: int = 4001,
-                  logger: Optional[logging.Logger] = None):
+                  logger: Optional[logging.Logger] = None,
+                  auto_reconnect: bool = True):
         """
         Initialize the matrix switch controller
 
@@ -42,9 +43,12 @@ class BaseHDMIMatrix(ABC):
             host: IP address for TCP connection (default 192.168.0.178)
             port: TCP port (default 4001)
             logger: Optional logger instance
+            auto_reconnect: Automatically reconnect and retry on connection
+                loss (default True)
         """
         self.host = host
         self.port = port
+        self.auto_reconnect = auto_reconnect
 
         # TODO - make this be configurable based on the matrix type
         # eg 4x4 or 8x8
@@ -138,8 +142,9 @@ class HDMIMatrix(BaseHDMIMatrix):
     """Synchronous controller for AVGear (and possibly other) HDMI Matrix switches"""
 
     def __init__(self, host: str = "192.168.0.178", port: int = 4001,
-                  logger: Optional[logging.Logger] = None):
-        super().__init__(host, port, logger)
+                  logger: Optional[logging.Logger] = None,
+                  auto_reconnect: bool = True):
+        super().__init__(host, port, logger, auto_reconnect)
         self.connection: Optional[socket.socket] = None
 
     @property
@@ -245,16 +250,29 @@ class HDMIMatrix(BaseHDMIMatrix):
 
     # Internal methods
     def _process_request(self, request: bytes) -> str:
-        if not self.connection:
-            raise RuntimeError("Not connected. Call connect() first.")
+        if not self.is_connected:
+            if self.auto_reconnect:
+                self.logger.info("Not connected, attempting auto-reconnect...")
+                if not self.connect():
+                    raise RuntimeError("Not connected and auto-reconnect failed.")
+            else:
+                raise RuntimeError("Not connected. Call connect() first.")
 
-        # Send the command
-        self.connection.send(request)
-        self.logger.debug(f'Send Command: {request}')        
-
-        # Read all the responses back
-        response = self._read_response()
-        return response
+        try:
+            self.connection.send(request)
+            self.logger.debug(f'Send Command: {request}')
+            return self._read_response()
+        except (OSError, socket.timeout) as e:
+            self.logger.warning(f"Connection error during request: {e}")
+            self.disconnect()
+            if self.auto_reconnect:
+                self.logger.info("Attempting auto-reconnect...")
+                if self.connect():
+                    self.logger.info("Reconnected, retrying request...")
+                    self.connection.send(request)
+                    self.logger.debug(f'Send Command (retry): {request}')
+                    return self._read_response()
+            raise RuntimeError(f"Connection lost during request: {e}") from e
 
     def _read_response(self, timeout: float = 2.0) -> str:
         """
@@ -338,8 +356,9 @@ class AsyncHDMIMatrix(BaseHDMIMatrix):
     """Asynchronous controller for AVGear (and possibly other) HDMI Matrix switches"""
 
     def __init__(self, host: str = "192.168.0.178", port: int = 4001,
-                  logger: Optional[logging.Logger] = None):
-        super().__init__(host, port, logger)
+                  logger: Optional[logging.Logger] = None,
+                  auto_reconnect: bool = True):
+        super().__init__(host, port, logger, auto_reconnect)
         self.reader: Optional[asyncio.StreamReader] = None
         self.writer: Optional[asyncio.StreamWriter] = None
         self._connection_lock: Optional[asyncio.Lock] = None
@@ -455,19 +474,35 @@ class AsyncHDMIMatrix(BaseHDMIMatrix):
 
     # Internal methods
     async def _process_request(self, request: bytes) -> str:
-        if not self.writer or not self.reader or not self._connection_lock:
+        if not self.is_connected:
+            if self.auto_reconnect:
+                self.logger.info("Not connected, attempting auto-reconnect...")
+                if not await self.connect():
+                    raise RuntimeError("Not connected and auto-reconnect failed.")
+            else:
+                raise RuntimeError("Not connected. Call connect() first.")
+
+        if not self._connection_lock:
             raise RuntimeError("Not connected. Call connect() first.")
 
-        # Use lock to ensure only one request at a time
         async with self._connection_lock:
-            # Send the command
-            self.writer.write(request)
-            await self.writer.drain()
-            self.logger.debug(f'Send Command: {request}')        
-
-            # Read all the responses back
-            response = await self._read_response()
-            return response
+            try:
+                self.writer.write(request)
+                await self.writer.drain()
+                self.logger.debug(f'Send Command: {request}')
+                return await self._read_response()
+            except (OSError, asyncio.TimeoutError) as e:
+                self.logger.warning(f"Connection error during request: {e}")
+                await self.disconnect()
+                if self.auto_reconnect:
+                    self.logger.info("Attempting auto-reconnect...")
+                    if await self.connect():
+                        self.logger.info("Reconnected, retrying request...")
+                        self.writer.write(request)
+                        await self.writer.drain()
+                        self.logger.debug(f'Send Command (retry): {request}')
+                        return await self._read_response()
+                raise RuntimeError(f"Connection lost during request: {e}") from e
 
     async def _read_response(self, timeout: float = 2.0) -> str:
         """

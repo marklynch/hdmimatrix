@@ -58,6 +58,14 @@ class TestInit:
         HDMIMatrix(TEST_HOST, TEST_PORT, logger=custom_logger)
         assert len(custom_logger.handlers) == handler_count_before
 
+    def test_auto_reconnect_default_true(self):
+        matrix = HDMIMatrix(TEST_HOST, TEST_PORT)
+        assert matrix.auto_reconnect is True
+
+    def test_auto_reconnect_custom_false(self):
+        matrix = HDMIMatrix(TEST_HOST, TEST_PORT, auto_reconnect=False)
+        assert matrix.auto_reconnect is False
+
 
 # --- Properties ---
 

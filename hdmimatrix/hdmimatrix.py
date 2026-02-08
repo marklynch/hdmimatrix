@@ -7,6 +7,8 @@ from typing import Optional
 from abc import ABC, abstractmethod
 
 
+__all__ = ["HDMIMatrix", "AsyncHDMIMatrix", "Commands"]
+
 SOCKET_RECV_BUFFER = 2048 # size of socket recieve buffer
 SOCKET_TIMEOUT = 5.0
 SOCKET_END_OF_DATA_TIMEOUT = 0.5 # if no data recieved assume end of message
@@ -73,7 +75,8 @@ class BaseHDMIMatrix(ABC):
             self.logger = logger
 
     @property
-    def input_count(self):
+    def input_count(self) -> int:
+        """Number of HDMI input ports on the matrix (read-only)."""
         return self._input_count
 
     @input_count.setter
@@ -81,7 +84,8 @@ class BaseHDMIMatrix(ABC):
         raise RuntimeError(f"input_count is read-only — attempted to set it to {value}")
 
     @property
-    def output_count(self):
+    def output_count(self) -> int:
+        """Number of HDMI output ports on the matrix (read-only)."""
         return self._output_count
 
     @output_count.setter
@@ -183,18 +187,23 @@ class HDMIMatrix(BaseHDMIMatrix):
 
     # Information Methods
     def get_device_name(self) -> str:
+        """Query the device name configured on the matrix."""
         return self._process_request(Commands.NAME.value.encode('ascii'))
 
     def get_device_status(self) -> str:
+        """Query the overall device status."""
         return self._process_request(Commands.STATUS.value.encode('ascii'))
 
     def get_device_type(self) -> str:
+        """Query the device model/type identifier."""
         return self._process_request(Commands.TYPE.value.encode('ascii'))
 
     def get_device_version(self) -> str:
+        """Query the firmware version of the device."""
         return self._process_request(Commands.VERSION.value.encode('ascii'))
 
     def get_video_status(self) -> str:
+        """Query the raw video routing status string."""
         return self._process_request(Commands.STATUS_VIDEO.value.encode('ascii'))
 
     def get_video_status_parsed(self) -> dict:
@@ -232,18 +241,40 @@ class HDMIMatrix(BaseHDMIMatrix):
         return self._process_request(Commands.POWERON.value.encode('ascii'))
 
     def route_input_to_output(self, input: int, output: int) -> str:
-        """Select HDMI input to route to HDMI output"""
+        """Route an HDMI input to an HDMI output.
+
+        Args:
+            input: Input port number (1 to input_count).
+            output: Output port number (1 to output_count).
+
+        Raises:
+            ValueError: If input or output is out of range.
+        """
         self._validate_routing_params(input, output)
         return self._process_request(Commands.ROUTE_OUTPUT.value.format(output, input).encode('ascii'))
 
     def output_on(self, output: int) -> str:
-        """Turn on specific HDMI output"""
+        """Enable a specific HDMI output port.
+
+        Args:
+            output: Output port number (1 to output_count).
+
+        Raises:
+            ValueError: If output is out of range.
+        """
         if not 1 <= output <= self.output_count:
             raise ValueError(f"Output must be between 1 and {self.output_count}")
         return self._process_request(Commands.OUTPUT_ON.value.format(output).encode('ascii'))
 
     def output_off(self, output: int) -> str:
-        """Turn off specific HDMI output"""
+        """Disable a specific HDMI output port.
+
+        Args:
+            output: Output port number (1 to output_count).
+
+        Raises:
+            ValueError: If output is out of range.
+        """
         if not 1 <= output <= self.output_count:
             raise ValueError(f"Output must be between 1 and {self.output_count}")
         return self._process_request(Commands.OUTPUT_OFF.value.format(output).encode('ascii'))
@@ -407,18 +438,23 @@ class AsyncHDMIMatrix(BaseHDMIMatrix):
 
     # Information Methods
     async def get_device_name(self) -> str:
+        """Query the device name configured on the matrix."""
         return await self._process_request(Commands.NAME.value.encode('ascii'))
 
     async def get_device_status(self) -> str:
+        """Query the overall device status."""
         return await self._process_request(Commands.STATUS.value.encode('ascii'))
 
     async def get_device_type(self) -> str:
+        """Query the device model/type identifier."""
         return await self._process_request(Commands.TYPE.value.encode('ascii'))
 
     async def get_device_version(self) -> str:
+        """Query the firmware version of the device."""
         return await self._process_request(Commands.VERSION.value.encode('ascii'))
 
     async def get_video_status(self) -> str:
+        """Query the raw video routing status string."""
         return await self._process_request(Commands.STATUS_VIDEO.value.encode('ascii'))
 
     async def get_video_status_parsed(self) -> dict:
@@ -456,18 +492,40 @@ class AsyncHDMIMatrix(BaseHDMIMatrix):
         return await self._process_request(Commands.POWERON.value.encode('ascii'))
 
     async def route_input_to_output(self, input: int, output: int) -> str:
-        """Select HDMI input to route to HDMI output"""
+        """Route an HDMI input to an HDMI output.
+
+        Args:
+            input: Input port number (1 to input_count).
+            output: Output port number (1 to output_count).
+
+        Raises:
+            ValueError: If input or output is out of range.
+        """
         self._validate_routing_params(input, output)
         return await self._process_request(Commands.ROUTE_OUTPUT.value.format(output, input).encode('ascii'))
 
     async def output_on(self, output: int) -> str:
-        """Turn on specific HDMI output"""
+        """Enable a specific HDMI output port.
+
+        Args:
+            output: Output port number (1 to output_count).
+
+        Raises:
+            ValueError: If output is out of range.
+        """
         if not 1 <= output <= self.output_count:
             raise ValueError(f"Output must be between 1 and {self.output_count}")
         return await self._process_request(Commands.OUTPUT_ON.value.format(output).encode('ascii'))
 
     async def output_off(self, output: int) -> str:
-        """Turn off specific HDMI output"""
+        """Disable a specific HDMI output port.
+
+        Args:
+            output: Output port number (1 to output_count).
+
+        Raises:
+            ValueError: If output is out of range.
+        """
         if not 1 <= output <= self.output_count:
             raise ValueError(f"Output must be between 1 and {self.output_count}")
         return await self._process_request(Commands.OUTPUT_OFF.value.format(output).encode('ascii'))

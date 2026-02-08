@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - Added autoreconnect functionality
+- Added docstrings to all public methods that were missing them
+- Explicit __all__: Added __all__ = ["HDMIMatrix", "AsyncHDMIMatrix", "Commands"]
 
 ### Changed
 - Use `logging.INFO` instead of `'INFO'` string when setting loglevel

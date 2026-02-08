@@ -54,7 +54,7 @@ class BaseHDMIMatrix(ABC):
         # Initialise logging if logger is not passed in.
         if logger is None:
             self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
-            self.logger.setLevel('INFO')
+            self.logger.setLevel(logging.INFO)
 
             # Create formatter
             formatter = logging.Formatter(
@@ -79,7 +79,7 @@ class BaseHDMIMatrix(ABC):
     @property
     def output_count(self):
         return self._output_count
-    
+
     @output_count.setter
     def output_count(self, value: int):
         raise RuntimeError(f"output_count is read-only — attempted to set it to {value}")
@@ -88,45 +88,45 @@ class BaseHDMIMatrix(ABC):
         """Validate input and output parameters for routing"""
         if not 1 <= input <= self.input_count:
             raise ValueError(f"Input must be between 1 and {self.input_count}")
-        
+
         if not 1 <= output <= self.output_count:
             raise ValueError(f"Output must be between 1 and {self.output_count}")
 
     def parse_video_status(self, status_response: str) -> dict:
         """
         Parse video status response into a routing dictionary
-        
+
         Args:
             status_response: Raw response from get_video_status()
-            
+
         Returns:
             dict: Mapping of output number to input number
-            
+
         Example:
             {1: 1, 2: 2, 3: 1, 4: 1}  # output_number: input_number
         """
         import re
-        
+
         routing = {}
-        
+
         # Parse each line of the response
         for line in status_response.strip().split('\n'):
             line = line.strip()
             if not line:
                 continue
-                
+
             # Match pattern: "Output XX Switch To In YY!"
             match = re.search(r'Output\s+(\d+)\s+Switch\s+To\s+In\s+(\d+)!', line)
             if match:
                 output_num = int(match.group(1))
                 input_num = int(match.group(2))
                 routing[output_num] = input_num
-        
+
         return routing
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.host}:{self.port}, connected={self.is_connected})"
- 
+
 
     @abstractmethod
     def is_connected(self) -> bool:
@@ -261,25 +261,25 @@ class HDMIMatrix(BaseHDMIMatrix):
         Read all available response data from the device - this uses a timeout
         based method as there is no protocol format and output can be multiple
         lines.
-        
+
         Args:
             timeout: Total timeout in seconds
-            
+
         Returns:
             str: Complete response string or empty string if no response
         """
         if not self.connection:
             return ""
-            
+
         try:
             # Set socket to non-blocking mode temporarily
             original_timeout = self.connection.gettimeout()
             self.connection.settimeout(0.1)  # Short timeout for individual reads
-            
+
             response_parts = []
             start_time = time.time()
             last_data_time = start_time
-            
+
             while (time.time() - start_time) < timeout:
                 try:
                     # Try to read data
@@ -294,7 +294,7 @@ class HDMIMatrix(BaseHDMIMatrix):
                             # We got some data but nothing new for 0.5 seconds
                             break
                         time.sleep(SOCKET_RECEIVE_DELAY)  # Small delay before next attempt
-                        
+
                 except socket.timeout:
                     # No data available right now
                     if response_parts and (time.time() - last_data_time) > SOCKET_END_OF_DATA_TIMEOUT:
@@ -302,14 +302,14 @@ class HDMIMatrix(BaseHDMIMatrix):
                         break
                     time.sleep(SOCKET_RECEIVE_DELAY)  # Small delay before next attempt
                     continue
-                    
+
                 except Exception as e:
                     self.logger.error(f"Error during read: {e}")
                     break
-            
+
             # Restore original timeout
             self.connection.settimeout(original_timeout)
-            
+
             complete_response = ''.join(response_parts).strip()
             if complete_response:
                 self.logger.debug(f"Complete response: {repr(complete_response)}")
@@ -317,7 +317,7 @@ class HDMIMatrix(BaseHDMIMatrix):
             else:
                 self.logger.debug("No response received")
                 return ""
-                
+
         except Exception as e:
             self.logger.error(f"Error reading response: {e}")
             return ""
@@ -472,21 +472,21 @@ class AsyncHDMIMatrix(BaseHDMIMatrix):
     async def _read_response(self, timeout: float = 2.0) -> str:
         """
         Read all available response data from the device asynchronously
-        
+
         Args:
             timeout: Total timeout in seconds
-            
+
         Returns:
             str: Complete response string or empty string if no response
         """
         if not self.reader:
             return ""
-            
+
         try:
             response_parts = []
             start_time = asyncio.get_event_loop().time()
             last_data_time = start_time
-            
+
             while (asyncio.get_event_loop().time() - start_time) < timeout:
                 try:
                     # Try to read data with a short timeout
@@ -494,7 +494,7 @@ class AsyncHDMIMatrix(BaseHDMIMatrix):
                         self.reader.read(SOCKET_RECV_BUFFER), 
                         timeout=0.1
                     )
-                    
+
                     if data:
                         response_parts.append(data.decode('ascii', errors='ignore'))
                         last_data_time = asyncio.get_event_loop().time()
@@ -502,7 +502,7 @@ class AsyncHDMIMatrix(BaseHDMIMatrix):
                     else:
                         # Connection closed
                         break
-                        
+
                 except asyncio.TimeoutError:
                     # No data available right now
                     if response_parts and (asyncio.get_event_loop().time() - last_data_time) > SOCKET_END_OF_DATA_TIMEOUT:
@@ -510,11 +510,11 @@ class AsyncHDMIMatrix(BaseHDMIMatrix):
                         break
                     await asyncio.sleep(SOCKET_RECEIVE_DELAY)  # Small delay before next attempt
                     continue
-                    
+
                 except Exception as e:
                     self.logger.error(f"Error during async read: {e}")
                     break
-            
+
             complete_response = ''.join(response_parts).strip()
             if complete_response:
                 self.logger.debug(f"Complete response: {repr(complete_response)}")
@@ -522,7 +522,7 @@ class AsyncHDMIMatrix(BaseHDMIMatrix):
             else:
                 self.logger.debug("No response received")
                 return ""
-                
+
         except Exception as e:
             self.logger.error(f"Error reading async response: {e}")
             return ""

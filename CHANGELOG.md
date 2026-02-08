@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 ### Changed
+- Use `logging.INFO` instead of `'INFO'` string when setting loglevel
+- Cleanup extra whitespace in file
+
 ### Fixed
 ### Removed
 

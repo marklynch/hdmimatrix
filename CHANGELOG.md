@@ -7,8 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+### Changed
+### Fixed
+### Removed
+
+## [0.1.0] - 2026-02-08
+### Added
 - `__repr__` method on base class for easier debugging (e.g. `HDMIMatrix(192.168.0.178:4001, connected=True)`).
 - Added examples to the examples folder
+- Added tests for the whole library
 
 ### Fixed
 - Socket not cleaned up on failed connection — `connect()` now closes and nullifies the socket in the error path, preventing `is_connected` from incorrectly returning `True` after a connection failure.

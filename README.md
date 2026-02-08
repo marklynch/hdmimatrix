@@ -62,7 +62,23 @@ asyncio.run(main())
 ```python
 with matrix:
     routing = matrix.get_video_status_parsed()
-    print(routing)  # {output_number: input_number}
+    print(routing)  # {1: 1, 2: 3, 3: 2, 4: 4}
+
+    # Show which input is connected to each output
+    for output, input_num in sorted(routing.items()):
+        print(f"  Output {output} <- Input {input_num}")
+```
+
+### Power and Output Control
+
+```python
+with matrix:
+    matrix.power_on()
+    matrix.power_off()
+
+    # Enable/disable individual outputs
+    matrix.output_on(2)
+    matrix.output_off(2)
 ```
 
 ## API Overview
@@ -90,6 +106,29 @@ with matrix:
   - `route_input_to_output(input, output)`
   - `output_on(output)`
   - `output_off(output)`
+
+## Development
+
+Install with dev dependencies:
+
+```bash
+pip install -e ".[dev]"
+```
+
+### Running Tests
+
+```bash
+# Run all tests
+
+python3 -m pytest tests/
+
+# Run with coverage report
+python3 -m pytest tests/ --cov=hdmimatrix --cov-report=term-missing
+
+# Generate HTML coverage report
+python3 -m pytest tests/ --cov=hdmimatrix --cov-report=html
+# Then open htmlcov/index.html in your browser
+```
 
 ## Contributing
 

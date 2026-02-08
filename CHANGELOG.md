@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `__repr__` method on base class for easier debugging (e.g. `HDMIMatrix(192.168.0.178:4001, connected=True)`).
 ### Fixed
 - Socket not cleaned up on failed connection — `connect()` now closes and nullifies the socket in the error path, preventing `is_connected` from incorrectly returning `True` after a connection failure.
+- Added dev tools dependencies and configuration to `pyproject.toml`
 
 
 ## [0.0.6] - 2025-10-13

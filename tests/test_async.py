@@ -336,7 +336,7 @@ class TestAsyncReadResponse:
         mock_loop.time = MagicMock(side_effect=lambda: next(times))
 
         with patch("hdmimatrix.hdmimatrix.asyncio.wait_for", side_effect=fake_wait_for):
-            with patch("hdmimatrix.hdmimatrix.asyncio.get_event_loop", return_value=mock_loop):
+            with patch("hdmimatrix.hdmimatrix.asyncio.get_running_loop", return_value=mock_loop):
                 with patch("hdmimatrix.hdmimatrix.asyncio.sleep", side_effect=noop_sleep):
                     result = await matrix._read_response()
 
@@ -351,7 +351,7 @@ class TestAsyncReadResponse:
         mock_loop.time = MagicMock(side_effect=lambda: next(times))
 
         with patch("hdmimatrix.hdmimatrix.asyncio.wait_for", side_effect=fake_wait_for):
-            with patch("hdmimatrix.hdmimatrix.asyncio.get_event_loop", return_value=mock_loop):
+            with patch("hdmimatrix.hdmimatrix.asyncio.get_running_loop", return_value=mock_loop):
                 with patch("hdmimatrix.hdmimatrix.asyncio.sleep", side_effect=noop_sleep):
                     result = await matrix._read_response()
 
@@ -366,7 +366,7 @@ class TestAsyncReadResponse:
         mock_loop.time = MagicMock(side_effect=lambda: next(times))
 
         with patch("hdmimatrix.hdmimatrix.asyncio.wait_for", side_effect=fake_wait_for):
-            with patch("hdmimatrix.hdmimatrix.asyncio.get_event_loop", return_value=mock_loop):
+            with patch("hdmimatrix.hdmimatrix.asyncio.get_running_loop", return_value=mock_loop):
                 with patch("hdmimatrix.hdmimatrix.asyncio.sleep", side_effect=noop_sleep):
                     result = await matrix._read_response()
 
@@ -387,7 +387,7 @@ class TestAsyncReadResponse:
         mock_loop.time = MagicMock(side_effect=lambda: next(times))
 
         with patch("hdmimatrix.hdmimatrix.asyncio.wait_for", side_effect=fake_wait_for):
-            with patch("hdmimatrix.hdmimatrix.asyncio.get_event_loop", return_value=mock_loop):
+            with patch("hdmimatrix.hdmimatrix.asyncio.get_running_loop", return_value=mock_loop):
                 with patch("hdmimatrix.hdmimatrix.asyncio.sleep", side_effect=noop_sleep):
                     result = await matrix._read_response()
 

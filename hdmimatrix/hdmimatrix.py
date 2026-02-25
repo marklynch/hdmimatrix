@@ -1,10 +1,11 @@
-import socket
 import asyncio
 import logging
+import re
+import socket
 import time
+from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Optional
-from abc import ABC, abstractmethod
 
 
 __all__ = ["HDMIMatrix", "AsyncHDMIMatrix", "Commands"]
@@ -62,15 +63,16 @@ class BaseHDMIMatrix(ABC):
             self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
             self.logger.setLevel(logging.INFO)
 
-            # Create formatter
-            formatter = logging.Formatter(
-                '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                datefmt='%Y-%m-%d %H:%M:%S'
-            )
-            # Console handler
-            console_handler = logging.StreamHandler()
-            console_handler.setFormatter(formatter)
-            self.logger.addHandler(console_handler)
+            # Only add a handler if none are already attached to avoid
+            # duplicate log output when multiple instances share the logger.
+            if not self.logger.handlers:
+                formatter = logging.Formatter(
+                    '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S'
+                )
+                console_handler = logging.StreamHandler()
+                console_handler.setFormatter(formatter)
+                self.logger.addHandler(console_handler)
         else:
             self.logger = logger
 
@@ -165,8 +167,6 @@ class BaseHDMIMatrix(ABC):
         Example:
             {1: 1, 2: 2, 3: 1, 4: 1}  # output_number: input_number
         """
-        import re
-
         routing = {}
 
         # Parse each line of the response
@@ -188,10 +188,11 @@ class BaseHDMIMatrix(ABC):
         return f"{self.__class__.__name__}({self.host}:{self.port}, connected={self.is_connected})"
 
 
+    @property
     @abstractmethod
     def is_connected(self) -> bool:
         """Check if connection is active"""
-        pass
+        ...
 
 
 class HDMIMatrix(BaseHDMIMatrix):
@@ -217,9 +218,12 @@ class HDMIMatrix(BaseHDMIMatrix):
             self.connection.connect((self.host, self.port))
             self.logger.info(f"Connected to {self.host}:{self.port}")
 
-            # Read any data the welcome data to clear the buffer
-            data = self.connection.recv(SOCKET_RECV_BUFFER)
-            self.logger.debug(f"Discarding: {data}")
+            # Discard any welcome banner; ignore timeout if device sends none.
+            try:
+                data = self.connection.recv(SOCKET_RECV_BUFFER)
+                self.logger.debug(f"Discarding: {data}")
+            except socket.timeout:
+                pass  # No welcome data — that's fine.
 
             return True
 
@@ -245,6 +249,15 @@ class HDMIMatrix(BaseHDMIMatrix):
         return self.parse_video_status(self.get_video_status())
 
     def route_input_to_output(self, input: int, output: int) -> str:
+        """Route an HDMI input to an HDMI output.
+
+        Args:
+            input: Input port number (1 to input_count).
+            output: Output port number (1 to output_count).
+
+        Raises:
+            ValueError: If input or output is out of range.
+        """
         return self._process_request(self._build_route_command(input, output))
 
     def output_on(self, output: int) -> str:
@@ -314,7 +327,11 @@ class HDMIMatrix(BaseHDMIMatrix):
             # Set socket to non-blocking mode temporarily
             original_timeout = self.connection.gettimeout()
             self.connection.settimeout(0.1)  # Short timeout for individual reads
+        except Exception as e:
+            self.logger.error(f"Error reading response: {e}")
+            return ""
 
+        try:
             response_parts = []
             start_time = time.time()
             last_data_time = start_time
@@ -346,9 +363,6 @@ class HDMIMatrix(BaseHDMIMatrix):
                     self.logger.error(f"Error during read: {e}")
                     break
 
-            # Restore original timeout
-            self.connection.settimeout(original_timeout)
-
             complete_response = ''.join(response_parts).strip()
             if complete_response:
                 self.logger.debug(f"Complete response: {repr(complete_response)}")
@@ -360,6 +374,9 @@ class HDMIMatrix(BaseHDMIMatrix):
         except Exception as e:
             self.logger.error(f"Error reading response: {e}")
             return ""
+        finally:
+            # Always restore the original timeout, even if an exception occurred.
+            self.connection.settimeout(original_timeout)
 
     # Context manager support
     def __enter__(self):
@@ -514,20 +531,21 @@ class AsyncHDMIMatrix(BaseHDMIMatrix):
 
         try:
             response_parts = []
-            start_time = asyncio.get_event_loop().time()
+            loop = asyncio.get_running_loop()
+            start_time = loop.time()
             last_data_time = start_time
 
-            while (asyncio.get_event_loop().time() - start_time) < timeout:
+            while (loop.time() - start_time) < timeout:
                 try:
                     # Try to read data with a short timeout
                     data = await asyncio.wait_for(
-                        self.reader.read(SOCKET_RECV_BUFFER), 
+                        self.reader.read(SOCKET_RECV_BUFFER),
                         timeout=0.1
                     )
 
                     if data:
                         response_parts.append(data.decode('ascii', errors='ignore'))
-                        last_data_time = asyncio.get_event_loop().time()
+                        last_data_time = loop.time()
                         self.logger.debug(f"Received data chunk: {repr(data)}")
                     else:
                         # Connection closed
@@ -535,7 +553,7 @@ class AsyncHDMIMatrix(BaseHDMIMatrix):
 
                 except asyncio.TimeoutError:
                     # No data available right now
-                    if response_parts and (asyncio.get_event_loop().time() - last_data_time) > SOCKET_END_OF_DATA_TIMEOUT:
+                    if response_parts and (loop.time() - last_data_time) > SOCKET_END_OF_DATA_TIMEOUT:
                         # We got some data but nothing new for 0.5 seconds
                         break
                     await asyncio.sleep(SOCKET_RECEIVE_DELAY)  # Small delay before next attempt

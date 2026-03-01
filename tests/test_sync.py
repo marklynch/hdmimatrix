@@ -318,6 +318,16 @@ class TestInfoMethods:
 
         assert result == {1: 1, 2: 3}
 
+    def test_is_powered_on_returns_true_when_device_responds(self, sync_matrix):
+        with patch.object(sync_matrix, "get_device_name", return_value="MyMatrix"):
+            result = sync_matrix.is_powered_on()
+        assert result is True
+
+    def test_is_powered_on_returns_false_when_device_is_silent(self, sync_matrix):
+        with patch.object(sync_matrix, "get_device_name", return_value=""):
+            result = sync_matrix.is_powered_on()
+        assert result is False
+
 
 # --- Command methods ---
 

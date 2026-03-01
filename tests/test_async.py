@@ -435,6 +435,20 @@ class TestAsyncInfoMethods:
 
         assert result == {1: 1, 2: 3}
 
+    async def test_is_powered_on_returns_true_when_device_responds(self, async_matrix):
+        with patch.object(
+            async_matrix, "get_device_name", new_callable=AsyncMock, return_value="MyMatrix"
+        ):
+            result = await async_matrix.is_powered_on()
+        assert result is True
+
+    async def test_is_powered_on_returns_false_when_device_is_silent(self, async_matrix):
+        with patch.object(
+            async_matrix, "get_device_name", new_callable=AsyncMock, return_value=""
+        ):
+            result = await async_matrix.is_powered_on()
+        assert result is False
+
 
 # --- Command methods ---
 

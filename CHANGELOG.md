@@ -4,8 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
 ## [Unreleased]
+### Added
+### Changed
+### Fixed
+### Removed
+
+## [0.3.0] - 2026-03-01
+### Added
+- Added `is_powered_on()` helper function.
+
+## [0.2.0] - 2026-02-25
 ### Added
 - Added autoreconnect functionality
 - Added docstrings to all public methods that were missing them
@@ -15,9 +24,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Use `logging.INFO` instead of `'INFO'` string when setting loglevel
 - Cleanup extra whitespace in file
 - Refactored `HDMIMatrix` and `AsyncHDMIMatrix` to reduce duplicated code
+- Import organization: Reorganized imports in alphabetical order for better maintainability
+- Logging improvements: Added guard to prevent duplicate log handlers when multiple instances share the same logger
+- Socket timeout handling: Wrapped welcome banner reception in try-except to gracefully handle devices that don't send one
+- Error handling in _read_response: Improved exception handling with proper socket timeout restoration using a finally block to ensure cleanup even when errors occur
+- Async event loop: Replaced deprecated asyncio.get_event_loop() with asyncio.get_running_loop() for better async context handling
 
-### Fixed
-### Removed
 
 ## [0.1.0] - 2026-02-08
 ### Added

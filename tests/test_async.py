@@ -465,6 +465,20 @@ class TestAsyncInfoMethods:
             result = await async_matrix.is_powered_on()
         assert result is False
 
+    async def test_is_hdbt_powered_on_returns_true_when_on(self, async_matrix):
+        with patch.object(
+            async_matrix, "get_hdbt_power_status", new_callable=AsyncMock, return_value="HDBT Power ON!"
+        ):
+            result = await async_matrix.is_hdbt_powered_on()
+        assert result is True
+
+    async def test_is_hdbt_powered_on_returns_false_when_off(self, async_matrix):
+        with patch.object(
+            async_matrix, "get_hdbt_power_status", new_callable=AsyncMock, return_value="HDBT Power OFF!"
+        ):
+            result = await async_matrix.is_hdbt_powered_on()
+        assert result is False
+
 
 # --- Command methods ---
 

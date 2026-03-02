@@ -106,6 +106,7 @@ Working torwards making it easy to run this efficiently for example by making it
   - Context manager support (`with` / `async with`)
 - Info:
   - `is_powered_on()`
+  - `is_hdbt_powered_on()`
   - `get_device_name()`
   - `get_device_status()`
   - `get_device_type()`

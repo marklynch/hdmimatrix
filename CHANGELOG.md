@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 
+## [0.5.0] - 2026-03-02
+### Added
+- Added `is_hdbt_powered_on()` — returns `True` if HDBaseT power is currently on.
+
 ## [0.4.0] - 2026-03-02
 ### Added
 - Added `get_input_status_parsed()` — parses `STA_IN.` response into `{port: bool}` dict.

@@ -318,6 +318,13 @@ class HDMIMatrix(BaseHDMIMatrix):
         """
         return bool(self.get_device_name())
 
+    def is_hdbt_powered_on(self) -> bool:
+        """Check whether HDBaseT power is on.
+
+        Returns True if the response contains 'ON!', False otherwise.
+        """
+        return "ON!" in self.get_hdbt_power_status()
+
     def get_input_status_parsed(self) -> dict:
         """Get input connection status as a dict mapping port number to bool."""
         return self.parse_input_status(self.get_input_status())
@@ -535,6 +542,13 @@ class AsyncHDMIMatrix(BaseHDMIMatrix):
         while an empty response (as returned when powered off) means it is off.
         """
         return bool(await self.get_device_name())
+
+    async def is_hdbt_powered_on(self) -> bool:
+        """Check whether HDBaseT power is on.
+
+        Returns True if the response contains 'ON!', False otherwise.
+        """
+        return "ON!" in await self.get_hdbt_power_status()
 
     async def get_input_status_parsed(self) -> dict:
         """Get input connection status as a dict mapping port number to bool."""

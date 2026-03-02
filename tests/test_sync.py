@@ -340,6 +340,16 @@ class TestInfoMethods:
             result = sync_matrix.is_powered_on()
         assert result is False
 
+    def test_is_hdbt_powered_on_returns_true_when_on(self, sync_matrix):
+        with patch.object(sync_matrix, "get_hdbt_power_status", return_value="HDBT Power ON!"):
+            result = sync_matrix.is_hdbt_powered_on()
+        assert result is True
+
+    def test_is_hdbt_powered_on_returns_false_when_off(self, sync_matrix):
+        with patch.object(sync_matrix, "get_hdbt_power_status", return_value="HDBT Power OFF!"):
+            result = sync_matrix.is_hdbt_powered_on()
+        assert result is False
+
 
 # --- Command methods ---
 

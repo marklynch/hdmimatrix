@@ -77,6 +77,18 @@ class TestCommandsValues:
     def test_output_off_format_string(self):
         assert Commands.OUTPUT_OFF.value == "$OUT{:02d}."
 
+    def test_all_outputs_on_value(self):
+        assert Commands.ALL_OUTPUTS_ON.value == "@OUT00."
+
+    def test_all_outputs_off_value(self):
+        assert Commands.ALL_OUTPUTS_OFF.value == "$OUT00."
+
+    def test_hdbt_power_on_value(self):
+        assert Commands.HDBT_POWER_ON.value == "PHDBTON."
+
+    def test_hdbt_power_off_value(self):
+        assert Commands.HDBT_POWER_OFF.value == "PHDBTOFF."
+
 
 # --- Commands formatting ---
 
@@ -100,7 +112,7 @@ class TestCommandsFormatting:
 class TestCommandsEnumProperties:
 
     def test_member_count(self):
-        assert len(Commands) == 15
+        assert len(Commands) == 19
 
     def test_all_values_are_strings(self):
         for cmd in Commands:

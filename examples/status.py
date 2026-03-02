@@ -40,8 +40,8 @@ async def example_async_usage():
         # print("woke up")
 
 
-        status = await matrix.get_device_status()
-        print(f"Status: {status}")
+        # status = await matrix.get_device_status()
+        # print(f"Status: {status}")
 
         # status = await matrix.get_video_status()
         # print(f"Video Status: {status}")
@@ -49,28 +49,47 @@ async def example_async_usage():
         # status = await matrix.get_video_status_parsed()
         # print(f"Video Status: {status}")
 
-        # hdbt_power = await matrix.get_hdbt_power_status()
-        # print(f"HDBT Power Status: {hdbt_power}")
+        hdbt_power = await matrix.get_hdbt_power_status()
+        print(f"HDBT Power Status: {hdbt_power}")
 
-        # input_status = await matrix.get_input_status()
-        # print(f"Input Status: {input_status}")
+        input_status = await matrix.get_input_status()
+        print(f"Input Status: {input_status}")
 
-        # output_status = await matrix.get_output_status()
-        # print(f"Output Status: {output_status}")
+        output_status = await matrix.get_output_status()
+        print(f"Output Status: {output_status}")
 
         # result = await matrix.output_on(1)
         # print(f"Output on result: {result}")
 
 
+        # result = await matrix.output_off(5)
+        # print(f"Output off result: {result}")
+
+        result = await matrix.get_hdbt_power_status()
+        print(f"HDBT Power Status: {result}")
+
+        # result = await matrix.hdbt_power_off()
+        # print(f"HDBT Power Status: {result}")
+
+        result = await matrix.hdbt_power_on()
+        print(f"HDBT Power Status: {result}")
+
+
+        result = await matrix.get_input_status_parsed()
+        print(f"Parsed Input Status: {result}")
+
+        result = await matrix.get_output_status_parsed()
+        print(f"Parsed Output Status: {result}")
+
         # # Route input 1 to output 1
         # result = await matrix.route_input_to_output(1, 1)
         # print(f"Route result: {result}")
 
-        status = await matrix.get_hdcp_status()
-        print(f"Status: {status}")
+        # status = await matrix.get_hdcp_status()
+        # print(f"Status: {status}")
 
-        downscaling_status = await matrix.get_downscaling_status()
-        print(f"Downscaling Status: {downscaling_status}")
+        # downscaling_status = await matrix.get_downscaling_status()
+        # print(f"Downscaling Status: {downscaling_status}")
 
 
 

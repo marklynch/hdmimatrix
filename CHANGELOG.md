@@ -10,6 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 ### Removed
 
+
+## [0.4.0] - 2026-03-02
+### Added
+- Added `get_input_status_parsed()` — parses `STA_IN.` response into `{port: bool}` dict.
+- Added `get_output_status_parsed()` — parses `STA_OUT.` response into `{port: bool}` dict.
+- Added `all_outputs_on()` / `all_outputs_off()` — enable/disable all output ports at once (`@OUT00.` / `$OUT00.`).
+- Added `hdbt_power_on()` / `hdbt_power_off()` — power the HDBaseT receivers on/off (`PHDBTON.` / `PHDBTOFF.`).
+
 ## [0.3.0] - 2026-03-01
 ### Added
 - Added `is_powered_on()` helper function.

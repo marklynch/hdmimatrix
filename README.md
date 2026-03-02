@@ -79,7 +79,23 @@ with matrix:
     # Enable/disable individual outputs
     matrix.output_on(2)
     matrix.output_off(2)
+
+    # Enable/disable all outputs at once
+    matrix.all_outputs_on()
+    matrix.all_outputs_off()
+
+    # Enable/disable HDBaseT receiver power
+    matrix.hdbt_power_on()
+    matrix.hdbt_power_off()
 ```
+
+### Power management
+Working torwards making it easy to run this efficiently for example by making it easy to power off overnight here are some measurements.
+- Overall power usage ~ 60w
+- Turning off an output channel reduces about 2.5w per channel
+- Turning off HDBT power saves approx 34w with 4 channels plugged in.
+- So with all channels turned off and hdbt - it runs at ~19w 
+- Turning power off has a residual power usage of ~4w
 
 ## API Overview
 
@@ -98,7 +114,9 @@ with matrix:
   - `get_video_status_parsed()`
   - `get_hdbt_power_status()`
   - `get_input_status()`
+  - `get_input_status_parsed()`
   - `get_output_status()`
+  - `get_output_status_parsed()`
   - `get_hdcp_status()`
   - `get_downscaling_status()`
 - Control:
@@ -107,6 +125,10 @@ with matrix:
   - `route_input_to_output(input, output)`
   - `output_on(output)`
   - `output_off(output)`
+  - `all_outputs_on()`
+  - `all_outputs_off()`
+  - `hdbt_power_on()`
+  - `hdbt_power_off()`
 
 ## Development
 

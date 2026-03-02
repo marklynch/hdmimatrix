@@ -11,7 +11,12 @@ import pytest
 
 from hdmimatrix.hdmimatrix import AsyncHDMIMatrix, HDMIMatrix
 
-from .conftest import SAMPLE_VIDEO_STATUS, SAMPLE_VIDEO_STATUS_PARSED, TEST_HOST, TEST_PORT
+from .conftest import (
+    SAMPLE_INPUT_STATUS, SAMPLE_INPUT_STATUS_PARSED,
+    SAMPLE_OUTPUT_STATUS, SAMPLE_OUTPUT_STATUS_PARSED,
+    SAMPLE_VIDEO_STATUS, SAMPLE_VIDEO_STATUS_PARSED,
+    TEST_HOST, TEST_PORT,
+)
 
 
 # --- Initialization ---
@@ -126,6 +131,88 @@ class TestValidation:
     def test_both_invalid_raises_input_error_first(self, sync_matrix):
         with pytest.raises(ValueError, match="Input"):
             sync_matrix._validate_routing_params(0, 0)
+
+
+# --- Input status parsing ---
+
+class TestParseInputStatus:
+
+    def test_full_4_inputs(self, sync_matrix):
+        result = sync_matrix.parse_input_status(SAMPLE_INPUT_STATUS)
+        assert result == SAMPLE_INPUT_STATUS_PARSED
+
+    def test_all_connected(self, sync_matrix):
+        result = sync_matrix.parse_input_status("IN 1 2 3 4\nLINK Y Y Y Y")
+        assert result == {1: True, 2: True, 3: True, 4: True}
+
+    def test_none_connected(self, sync_matrix):
+        result = sync_matrix.parse_input_status("IN 1 2 3 4\nLINK N N N N")
+        assert result == {1: False, 2: False, 3: False, 4: False}
+
+    def test_single_input(self, sync_matrix):
+        result = sync_matrix.parse_input_status("IN 1\nLINK Y")
+        assert result == {1: True}
+
+    def test_empty_string(self, sync_matrix):
+        result = sync_matrix.parse_input_status("")
+        assert result == {}
+
+    def test_no_link_line(self, sync_matrix):
+        result = sync_matrix.parse_input_status("IN 1 2 3 4")
+        assert result == {}
+
+    def test_link_without_in_line(self, sync_matrix):
+        result = sync_matrix.parse_input_status("LINK Y Y Y Y")
+        assert result == {}
+
+    def test_extra_whitespace(self, sync_matrix):
+        result = sync_matrix.parse_input_status("IN  1  2  3  4\nLINK  Y  N  Y  N")
+        assert result == {1: True, 2: False, 3: True, 4: False}
+
+    def test_carriage_returns(self, sync_matrix):
+        result = sync_matrix.parse_input_status("IN 1 2 3 4\r\nLINK N N Y Y")
+        assert result == {1: False, 2: False, 3: True, 4: True}
+
+    def test_case_insensitive(self, sync_matrix):
+        result = sync_matrix.parse_input_status("in 1 2 3 4\nlink y n y n")
+        assert result == {1: True, 2: False, 3: True, 4: False}
+
+
+# --- Output status parsing ---
+
+class TestParseOutputStatus:
+
+    def test_full_8_outputs(self, sync_matrix):
+        result = sync_matrix.parse_output_status(SAMPLE_OUTPUT_STATUS)
+        assert result == SAMPLE_OUTPUT_STATUS_PARSED
+
+    def test_all_connected(self, sync_matrix):
+        result = sync_matrix.parse_output_status("OUT 1 2 3 4 5 6 7 8\nLINK Y Y Y Y Y Y Y Y")
+        assert result == {1: True, 2: True, 3: True, 4: True, 5: True, 6: True, 7: True, 8: True}
+
+    def test_none_connected(self, sync_matrix):
+        result = sync_matrix.parse_output_status("OUT 1 2 3 4 5 6 7 8\nLINK N N N N N N N N")
+        assert result == {1: False, 2: False, 3: False, 4: False, 5: False, 6: False, 7: False, 8: False}
+
+    def test_empty_string(self, sync_matrix):
+        result = sync_matrix.parse_output_status("")
+        assert result == {}
+
+    def test_no_link_line(self, sync_matrix):
+        result = sync_matrix.parse_output_status("OUT 1 2 3 4 5 6 7 8")
+        assert result == {}
+
+    def test_link_without_out_line(self, sync_matrix):
+        result = sync_matrix.parse_output_status("LINK Y Y Y Y Y Y Y Y")
+        assert result == {}
+
+    def test_carriage_returns(self, sync_matrix):
+        result = sync_matrix.parse_output_status("OUT 1 2 3 4 5 6 7 8\r\nLINK Y N N N Y N N N")
+        assert result == {1: True, 2: False, 3: False, 4: False, 5: True, 6: False, 7: False, 8: False}
+
+    def test_case_insensitive(self, sync_matrix):
+        result = sync_matrix.parse_output_status("out 1 2 3 4 5 6 7 8\nlink y n y n y n y n")
+        assert result == {1: True, 2: False, 3: True, 4: False, 5: True, 6: False, 7: True, 8: False}
 
 
 # --- Video status parsing ---

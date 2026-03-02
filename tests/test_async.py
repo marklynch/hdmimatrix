@@ -423,6 +423,22 @@ class TestAsyncInfoMethods:
         mock_req.assert_called_once_with(expected_cmd)
         assert result == "OK"
 
+    async def test_get_input_status_parsed(self, async_matrix):
+        with patch.object(
+            async_matrix, "get_input_status", new_callable=AsyncMock
+        ) as mock_status:
+            mock_status.return_value = "IN 1 2 3 4\nLINK N Y N Y"
+            result = await async_matrix.get_input_status_parsed()
+        assert result == {1: False, 2: True, 3: False, 4: True}
+
+    async def test_get_output_status_parsed(self, async_matrix):
+        with patch.object(
+            async_matrix, "get_output_status", new_callable=AsyncMock
+        ) as mock_status:
+            mock_status.return_value = "OUT 1 2 3 4 5 6 7 8\nLINK Y N Y N Y N Y N"
+            result = await async_matrix.get_output_status_parsed()
+        assert result == {1: True, 2: False, 3: True, 4: False, 5: True, 6: False, 7: True, 8: False}
+
     async def test_get_video_status_parsed(self, async_matrix):
         with patch.object(
             async_matrix, "get_video_status", new_callable=AsyncMock
@@ -519,3 +535,35 @@ class TestAsyncCommandMethods:
     async def test_output_off_invalid_five(self, async_matrix):
         with pytest.raises(ValueError, match="Output must be between"):
             await async_matrix.output_off(5)
+
+    async def test_all_outputs_on_sends_correct_command(self, async_matrix):
+        with patch.object(
+            async_matrix, "_process_request", new_callable=AsyncMock, return_value="OK"
+        ) as mock_req:
+            result = await async_matrix.all_outputs_on()
+        mock_req.assert_called_once_with(b"@OUT00.")
+        assert result == "OK"
+
+    async def test_all_outputs_off_sends_correct_command(self, async_matrix):
+        with patch.object(
+            async_matrix, "_process_request", new_callable=AsyncMock, return_value="OK"
+        ) as mock_req:
+            result = await async_matrix.all_outputs_off()
+        mock_req.assert_called_once_with(b"$OUT00.")
+        assert result == "OK"
+
+    async def test_hdbt_power_on_sends_correct_command(self, async_matrix):
+        with patch.object(
+            async_matrix, "_process_request", new_callable=AsyncMock, return_value="OK"
+        ) as mock_req:
+            result = await async_matrix.hdbt_power_on()
+        mock_req.assert_called_once_with(b"PHDBTON.")
+        assert result == "OK"
+
+    async def test_hdbt_power_off_sends_correct_command(self, async_matrix):
+        with patch.object(
+            async_matrix, "_process_request", new_callable=AsyncMock, return_value="OK"
+        ) as mock_req:
+            result = await async_matrix.hdbt_power_off()
+        mock_req.assert_called_once_with(b"PHDBTOFF.")
+        assert result == "OK"

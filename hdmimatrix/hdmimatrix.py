@@ -31,6 +31,10 @@ class Commands(Enum):
     ROUTE_OUTPUT = "OUT{:02d}:{:02d}."
     OUTPUT_ON = "@OUT{:02d}."
     OUTPUT_OFF = "$OUT{:02d}."
+    ALL_OUTPUTS_ON = "@OUT00."
+    ALL_OUTPUTS_OFF = "$OUT00."
+    HDBT_POWER_ON = "PHDBTON."
+    HDBT_POWER_OFF = "PHDBTOFF."
 
 
 class BaseHDMIMatrix(ABC):
@@ -109,6 +113,10 @@ class BaseHDMIMatrix(ABC):
         "get_downscaling_status": ("Get downscaling status of each output.", Commands.STATUS_DOWNSCALING),
         "power_on":               ("Power on the HDMI matrix.", Commands.POWERON),
         "power_off":              ("Power off the HDMI matrix.", Commands.POWEROFF),
+        "all_outputs_on":         ("Turn on all HDMI output ports.", Commands.ALL_OUTPUTS_ON),
+        "all_outputs_off":        ("Turn off all HDMI output ports.", Commands.ALL_OUTPUTS_OFF),
+        "hdbt_power_on":          ("Power on the HDBaseT receivers/transmitters.", Commands.HDBT_POWER_ON),
+        "hdbt_power_off":         ("Power off the HDBaseT receivers/transmitters.", Commands.HDBT_POWER_OFF),
     }
 
     def __init_subclass__(cls, **kwargs):
@@ -153,6 +161,64 @@ class BaseHDMIMatrix(ABC):
         if not 1 <= output <= self.output_count:
             raise ValueError(f"Output must be between 1 and {self.output_count}")
         return Commands.OUTPUT_OFF.value.format(output).encode("ascii")
+
+    def parse_input_status(self, status_response: str) -> dict:
+        """
+        Parse STA_IN response into a connection-status dictionary.
+
+        Args:
+            status_response: Raw response from get_input_status()
+
+        Returns:
+            dict: Mapping of input port number to connection state (True=connected)
+
+        Example:
+            {1: False, 2: False, 3: False, 4: True}
+        """
+        ports = []
+        for line in status_response.strip().split('\n'):
+            line = line.strip()
+            if not line:
+                continue
+            m = re.match(r'^IN\s+([\d\s]+)$', line, re.IGNORECASE)
+            if m:
+                ports = [int(x) for x in m.group(1).split()]
+                continue
+            m = re.match(r'^LINK\s+((?:[YN]\s*)+)$', line, re.IGNORECASE)
+            if m and ports:
+                values = m.group(1).split()
+                return {p: v.upper() == 'Y' for p, v in zip(ports, values)}
+        return {}
+
+    def parse_output_status(self, status_response: str) -> dict:
+        """
+        Parse STA_OUT response into a connection-status dictionary.
+
+        Outputs 1-4 are HDBaseT outputs; outputs 5-8 are HDMI loop outputs.
+
+        Args:
+            status_response: Raw response from get_output_status()
+
+        Returns:
+            dict: Mapping of output port number to connection state (True=connected)
+
+        Example:
+            {1: False, 2: False, 3: True, 4: False, 5: False, 6: False, 7: True, 8: False}
+        """
+        ports = []
+        for line in status_response.strip().split('\n'):
+            line = line.strip()
+            if not line:
+                continue
+            m = re.match(r'^OUT\s+([\d\s]+)$', line, re.IGNORECASE)
+            if m:
+                ports = [int(x) for x in m.group(1).split()]
+                continue
+            m = re.match(r'^LINK\s+((?:[YN]\s*)+)$', line, re.IGNORECASE)
+            if m and ports:
+                values = m.group(1).split()
+                return {p: v.upper() == 'Y' for p, v in zip(ports, values)}
+        return {}
 
     def parse_video_status(self, status_response: str) -> dict:
         """
@@ -251,6 +317,14 @@ class HDMIMatrix(BaseHDMIMatrix):
         while an empty response (as returned when powered off) means it is off.
         """
         return bool(self.get_device_name())
+
+    def get_input_status_parsed(self) -> dict:
+        """Get input connection status as a dict mapping port number to bool."""
+        return self.parse_input_status(self.get_input_status())
+
+    def get_output_status_parsed(self) -> dict:
+        """Get output connection status as a dict mapping port number to bool."""
+        return self.parse_output_status(self.get_output_status())
 
     def get_video_status_parsed(self) -> dict:
         """Get video status and return parsed routing dictionary."""
@@ -461,6 +535,14 @@ class AsyncHDMIMatrix(BaseHDMIMatrix):
         while an empty response (as returned when powered off) means it is off.
         """
         return bool(await self.get_device_name())
+
+    async def get_input_status_parsed(self) -> dict:
+        """Get input connection status as a dict mapping port number to bool."""
+        return self.parse_input_status(await self.get_input_status())
+
+    async def get_output_status_parsed(self) -> dict:
+        """Get output connection status as a dict mapping port number to bool."""
+        return self.parse_output_status(await self.get_output_status())
 
     async def get_video_status_parsed(self) -> dict:
         """Get video status and return parsed routing dictionary."""

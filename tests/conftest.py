@@ -18,6 +18,15 @@ TEST_HOST = "10.0.0.99"
 TEST_PORT = 5001
 WELCOME_DATA = b"Welcome to HDMI Matrix\r\n"
 
+SAMPLE_INPUT_STATUS = "IN 1 2 3 4\nLINK N Y N Y"
+SAMPLE_INPUT_STATUS_PARSED = {1: False, 2: True, 3: False, 4: True}
+
+SAMPLE_OUTPUT_STATUS = "OUT 1 2 3 4 5 6 7 8\nLINK N N Y N N N Y N"
+SAMPLE_OUTPUT_STATUS_PARSED = {
+    1: False, 2: False, 3: True, 4: False,
+    5: False, 6: False, 7: True, 8: False,
+}
+
 SAMPLE_VIDEO_STATUS = (
     "Output 1 Switch To In 1!\n"
     "Output 2 Switch To In 3!\n"

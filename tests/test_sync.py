@@ -298,6 +298,7 @@ class TestInfoMethods:
             ("get_output_status", b"STA_OUT."),
             ("get_hdcp_status", b"STA_HDCP."),
             ("get_downscaling_status", b"STA_DS."),
+            ("get_output_power_status", b"STA_POUT."),
         ],
     )
     def test_sends_correct_command(self, sync_matrix, method_name, expected_cmd):
@@ -319,6 +320,12 @@ class TestInfoMethods:
             mock_status.return_value = "OUT 1 2 3 4 5 6 7 8\nLINK Y N Y N Y N Y N"
             result = sync_matrix.get_output_status_parsed()
         assert result == {1: True, 2: False, 3: True, 4: False, 5: True, 6: False, 7: True, 8: False}
+
+    def test_get_output_power_status_parsed(self, sync_matrix):
+        with patch.object(sync_matrix, "get_output_power_status") as mock_status:
+            mock_status.return_value = "Turn ON Output 01!\nTurn OFF Output 02!\n"
+            result = sync_matrix.get_output_power_status_parsed()
+        assert result == {1: True, 2: False}
 
     def test_get_video_status_parsed(self, sync_matrix):
         with patch.object(sync_matrix, "get_video_status") as mock_status:
@@ -392,7 +399,7 @@ class TestCommandMethods:
         with pytest.raises(ValueError, match="Output"):
             sync_matrix.route_input_to_output(1, 5)
 
-    @pytest.mark.parametrize("output", [1, 2, 3, 4])
+    @pytest.mark.parametrize("output", [1, 2, 3, 4, 5, 6, 7, 8])
     def test_output_on_valid_range(self, sync_matrix, output):
         with patch.object(sync_matrix, "_process_request", return_value="OK") as mock_req:
             sync_matrix.output_on(output)
@@ -403,15 +410,15 @@ class TestCommandMethods:
         with pytest.raises(ValueError, match="Output must be between"):
             sync_matrix.output_on(0)
 
-    def test_output_on_invalid_five(self, sync_matrix):
+    def test_output_on_invalid_nine(self, sync_matrix):
         with pytest.raises(ValueError, match="Output must be between"):
-            sync_matrix.output_on(5)
+            sync_matrix.output_on(9)
 
     def test_output_on_invalid_negative(self, sync_matrix):
         with pytest.raises(ValueError, match="Output must be between"):
             sync_matrix.output_on(-1)
 
-    @pytest.mark.parametrize("output", [1, 2, 3, 4])
+    @pytest.mark.parametrize("output", [1, 2, 3, 4, 5, 6, 7, 8])
     def test_output_off_valid_range(self, sync_matrix, output):
         with patch.object(sync_matrix, "_process_request", return_value="OK") as mock_req:
             sync_matrix.output_off(output)
@@ -422,9 +429,9 @@ class TestCommandMethods:
         with pytest.raises(ValueError, match="Output must be between"):
             sync_matrix.output_off(0)
 
-    def test_output_off_invalid_five(self, sync_matrix):
+    def test_output_off_invalid_nine(self, sync_matrix):
         with pytest.raises(ValueError, match="Output must be between"):
-            sync_matrix.output_off(5)
+            sync_matrix.output_off(9)
 
     def test_all_outputs_on_sends_correct_command(self, sync_matrix):
         with patch.object(sync_matrix, "_process_request", return_value="OK") as mock_req:

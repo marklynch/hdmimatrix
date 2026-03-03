@@ -15,6 +15,10 @@ SOCKET_TIMEOUT = 5.0
 SOCKET_END_OF_DATA_TIMEOUT = 0.5 # if no data recieved assume end of message
 SOCKET_RECEIVE_DELAY = 0.05 # delay between recieves
 
+INPUT_COUNT = 4          # number of HDMI input ports
+OUTPUT_COUNT = 4         # number of routing output ports (HDBT)
+OUTPUT_POWER_COUNT = 8   # number of power-controllable output ports (4 HDBT + 4 HDMI loop)
+
 class Commands(Enum):
     POWERON = "PowerON."
     POWEROFF = "PowerOFF."
@@ -28,6 +32,7 @@ class Commands(Enum):
     STATUS_OUTPUT = "STA_OUT."
     STATUS_HDCP = "STA_HDCP."
     STATUS_DOWNSCALING = "STA_DS."
+    STATUS_OUTPUT_POWER = "STA_POUT."
     ROUTE_OUTPUT = "OUT{:02d}:{:02d}."
     OUTPUT_ON = "@OUT{:02d}."
     OUTPUT_OFF = "$OUT{:02d}."
@@ -59,8 +64,8 @@ class BaseHDMIMatrix(ABC):
 
         # TODO - make this be configurable based on the matrix type
         # eg 4x4 or 8x8
-        self._input_count = 4
-        self._output_count = 4
+        self._input_count = INPUT_COUNT
+        self._output_count = OUTPUT_COUNT
 
         # Initialise logging if logger is not passed in.
         if logger is None:
@@ -110,7 +115,8 @@ class BaseHDMIMatrix(ABC):
         "get_input_status":       ("Get connection status of all HDMI input ports.", Commands.STATUS_INPUT),
         "get_output_status":      ("Get connection status of all HDMI output ports.", Commands.STATUS_OUTPUT),
         "get_hdcp_status":        ("Get HDCP status information.", Commands.STATUS_HDCP),
-        "get_downscaling_status": ("Get downscaling status of each output.", Commands.STATUS_DOWNSCALING),
+        "get_downscaling_status":    ("Get downscaling status of each output.", Commands.STATUS_DOWNSCALING),
+        "get_output_power_status":   ("Get power on/off status of each output port.", Commands.STATUS_OUTPUT_POWER),
         "power_on":               ("Power on the HDMI matrix.", Commands.POWERON),
         "power_off":              ("Power off the HDMI matrix.", Commands.POWEROFF),
         "all_outputs_on":         ("Turn on all HDMI output ports.", Commands.ALL_OUTPUTS_ON),
@@ -152,14 +158,14 @@ class BaseHDMIMatrix(ABC):
 
     def _build_output_on_command(self, output: int) -> bytes:
         """Validate output param and build the output-on command bytes."""
-        if not 1 <= output <= self.output_count:
-            raise ValueError(f"Output must be between 1 and {self.output_count}")
+        if not 1 <= output <= OUTPUT_POWER_COUNT:
+            raise ValueError(f"Output must be between 1 and {OUTPUT_POWER_COUNT}")
         return Commands.OUTPUT_ON.value.format(output).encode("ascii")
 
     def _build_output_off_command(self, output: int) -> bytes:
         """Validate output param and build the output-off command bytes."""
-        if not 1 <= output <= self.output_count:
-            raise ValueError(f"Output must be between 1 and {self.output_count}")
+        if not 1 <= output <= OUTPUT_POWER_COUNT:
+            raise ValueError(f"Output must be between 1 and {OUTPUT_POWER_COUNT}")
         return Commands.OUTPUT_OFF.value.format(output).encode("ascii")
 
     def parse_input_status(self, status_response: str) -> dict:
@@ -219,6 +225,27 @@ class BaseHDMIMatrix(ABC):
                 values = m.group(1).split()
                 return {p: v.upper() == 'Y' for p, v in zip(ports, values)}
         return {}
+
+    def parse_output_power_status(self, status_response: str) -> dict:
+        """
+        Parse STA_POUT response into a power-state dictionary.
+
+        Args:
+            status_response: Raw response from get_output_power_status()
+
+        Returns:
+            dict: Mapping of output port number to power state (True=on, False=off)
+
+        Example:
+            {1: True, 2: True, 3: False, 4: False, 5: False, 6: False, 7: False, 8: False}
+        """
+        result = {}
+        for line in status_response.strip().split('\n'):
+            line = line.strip()
+            m = re.match(r'^Turn\s+(ON|OFF)\s+Output\s+(\d+)!', line, re.IGNORECASE)
+            if m:
+                result[int(m.group(2))] = m.group(1).upper() == 'ON'
+        return result
 
     def parse_video_status(self, status_response: str) -> dict:
         """
@@ -332,6 +359,10 @@ class HDMIMatrix(BaseHDMIMatrix):
     def get_output_status_parsed(self) -> dict:
         """Get output connection status as a dict mapping port number to bool."""
         return self.parse_output_status(self.get_output_status())
+
+    def get_output_power_status_parsed(self) -> dict:
+        """Get output power state as a dict mapping port number to bool."""
+        return self.parse_output_power_status(self.get_output_power_status())
 
     def get_video_status_parsed(self) -> dict:
         """Get video status and return parsed routing dictionary."""
@@ -557,6 +588,10 @@ class AsyncHDMIMatrix(BaseHDMIMatrix):
     async def get_output_status_parsed(self) -> dict:
         """Get output connection status as a dict mapping port number to bool."""
         return self.parse_output_status(await self.get_output_status())
+
+    async def get_output_power_status_parsed(self) -> dict:
+        """Get output power state as a dict mapping port number to bool."""
+        return self.parse_output_power_status(await self.get_output_power_status())
 
     async def get_video_status_parsed(self) -> dict:
         """Get video status and return parsed routing dictionary."""

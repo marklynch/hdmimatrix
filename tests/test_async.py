@@ -411,6 +411,7 @@ class TestAsyncInfoMethods:
             ("get_output_status", b"STA_OUT."),
             ("get_hdcp_status", b"STA_HDCP."),
             ("get_downscaling_status", b"STA_DS."),
+            ("get_output_power_status", b"STA_POUT."),
         ],
     )
     async def test_sends_correct_command(self, async_matrix, method_name, expected_cmd):
@@ -438,6 +439,14 @@ class TestAsyncInfoMethods:
             mock_status.return_value = "OUT 1 2 3 4 5 6 7 8\nLINK Y N Y N Y N Y N"
             result = await async_matrix.get_output_status_parsed()
         assert result == {1: True, 2: False, 3: True, 4: False, 5: True, 6: False, 7: True, 8: False}
+
+    async def test_get_output_power_status_parsed(self, async_matrix):
+        with patch.object(
+            async_matrix, "get_output_power_status", new_callable=AsyncMock
+        ) as mock_status:
+            mock_status.return_value = "Turn ON Output 01!\nTurn OFF Output 02!\n"
+            result = await async_matrix.get_output_power_status_parsed()
+        assert result == {1: True, 2: False}
 
     async def test_get_video_status_parsed(self, async_matrix):
         with patch.object(
@@ -516,7 +525,7 @@ class TestAsyncCommandMethods:
         with pytest.raises(ValueError, match="Output"):
             await async_matrix.route_input_to_output(1, 5)
 
-    @pytest.mark.parametrize("output", [1, 2, 3, 4])
+    @pytest.mark.parametrize("output", [1, 2, 3, 4, 5, 6, 7, 8])
     async def test_output_on_valid_range(self, async_matrix, output):
         with patch.object(
             async_matrix, "_process_request", new_callable=AsyncMock, return_value="OK"
@@ -529,11 +538,11 @@ class TestAsyncCommandMethods:
         with pytest.raises(ValueError, match="Output must be between"):
             await async_matrix.output_on(0)
 
-    async def test_output_on_invalid_five(self, async_matrix):
+    async def test_output_on_invalid_nine(self, async_matrix):
         with pytest.raises(ValueError, match="Output must be between"):
-            await async_matrix.output_on(5)
+            await async_matrix.output_on(9)
 
-    @pytest.mark.parametrize("output", [1, 2, 3, 4])
+    @pytest.mark.parametrize("output", [1, 2, 3, 4, 5, 6, 7, 8])
     async def test_output_off_valid_range(self, async_matrix, output):
         with patch.object(
             async_matrix, "_process_request", new_callable=AsyncMock, return_value="OK"
@@ -546,9 +555,9 @@ class TestAsyncCommandMethods:
         with pytest.raises(ValueError, match="Output must be between"):
             await async_matrix.output_off(0)
 
-    async def test_output_off_invalid_five(self, async_matrix):
+    async def test_output_off_invalid_nine(self, async_matrix):
         with pytest.raises(ValueError, match="Output must be between"):
-            await async_matrix.output_off(5)
+            await async_matrix.output_off(9)
 
     async def test_all_outputs_on_sends_correct_command(self, async_matrix):
         with patch.object(

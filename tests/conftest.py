@@ -30,6 +30,21 @@ SAMPLE_OUTPUT_STATUS_PARSED = {
     5: False, 6: False, 7: True, 8: False,
 }
 
+SAMPLE_OUTPUT_POWER_STATUS = (
+    "Turn ON Output 01!\n"
+    "Turn ON Output 02!\n"
+    "Turn OFF Output 03!\n"
+    "Turn OFF Output 04!\n"
+    "Turn OFF Output 05!\n"
+    "Turn OFF Output 06!\n"
+    "Turn OFF Output 07!\n"
+    "Turn OFF Output 08!\n"
+)
+SAMPLE_OUTPUT_POWER_STATUS_PARSED = {
+    1: True, 2: True, 3: False, 4: False,
+    5: False, 6: False, 7: False, 8: False,
+}
+
 SAMPLE_VIDEO_STATUS = (
     "Output 1 Switch To In 1!\n"
     "Output 2 Switch To In 3!\n"

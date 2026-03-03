@@ -14,6 +14,7 @@ from hdmimatrix.hdmimatrix import AsyncHDMIMatrix, HDMIMatrix
 from .conftest import (
     SAMPLE_INPUT_STATUS, SAMPLE_INPUT_STATUS_PARSED,
     SAMPLE_OUTPUT_STATUS, SAMPLE_OUTPUT_STATUS_PARSED,
+    SAMPLE_OUTPUT_POWER_STATUS, SAMPLE_OUTPUT_POWER_STATUS_PARSED,
     SAMPLE_VIDEO_STATUS, SAMPLE_VIDEO_STATUS_PARSED,
     TEST_HOST, TEST_PORT,
 )
@@ -254,6 +255,47 @@ class TestParseVideoStatus:
         data = "Output 10 Switch To In 12!"
         result = sync_matrix.parse_video_status(data)
         assert result == {10: 12}
+
+
+# --- Output power status parsing ---
+
+class TestParseOutputPowerStatus:
+
+    def test_full_8_outputs(self, sync_matrix):
+        result = sync_matrix.parse_output_power_status(SAMPLE_OUTPUT_POWER_STATUS)
+        assert result == SAMPLE_OUTPUT_POWER_STATUS_PARSED
+
+    def test_all_on(self, sync_matrix):
+        data = "Turn ON Output 01!\nTurn ON Output 02!\nTurn ON Output 03!\nTurn ON Output 04!\n"
+        result = sync_matrix.parse_output_power_status(data)
+        assert result == {1: True, 2: True, 3: True, 4: True}
+
+    def test_all_off(self, sync_matrix):
+        data = "Turn OFF Output 01!\nTurn OFF Output 02!\nTurn OFF Output 03!\nTurn OFF Output 04!\n"
+        result = sync_matrix.parse_output_power_status(data)
+        assert result == {1: False, 2: False, 3: False, 4: False}
+
+    def test_empty_string(self, sync_matrix):
+        result = sync_matrix.parse_output_power_status("")
+        assert result == {}
+
+    def test_no_matches(self, sync_matrix):
+        result = sync_matrix.parse_output_power_status("No valid data here\nAnother line")
+        assert result == {}
+
+    def test_carriage_returns(self, sync_matrix):
+        data = "Turn ON Output 01!\r\nTurn OFF Output 02!\r\n"
+        result = sync_matrix.parse_output_power_status(data)
+        assert result == {1: True, 2: False}
+
+    def test_case_insensitive(self, sync_matrix):
+        data = "turn on output 01!\nturn off output 02!\n"
+        result = sync_matrix.parse_output_power_status(data)
+        assert result == {1: True, 2: False}
+
+    def test_leading_zero_port_numbers(self, sync_matrix):
+        result = sync_matrix.parse_output_power_status("Turn ON Output 08!\nTurn ON Output 16!\n")
+        assert result == {8: True, 16: True}
 
 
 # --- Repr ---

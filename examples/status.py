@@ -68,11 +68,16 @@ async def example_async_usage():
         result = await matrix.get_hdbt_power_status()
         print(f"HDBT Power Status: {result}")
 
+
+        result = await matrix.get_output_power_status()
+        print(f"Output Power Status: {result}")
+
+
         # result = await matrix.hdbt_power_off()
         # print(f"HDBT Power Status: {result}")
 
-        result = await matrix.hdbt_power_on()
-        print(f"HDBT Power Status: {result}")
+        # result = await matrix.hdbt_power_on()
+        # print(f"HDBT Power Status: {result}")
 
 
         result = await matrix.get_input_status_parsed()
@@ -80,6 +85,11 @@ async def example_async_usage():
 
         result = await matrix.get_output_status_parsed()
         print(f"Parsed Output Status: {result}")
+
+
+        result = await matrix.get_output_power_status_parsed()
+        print(f"Parsed Output Power Status: {result}")
+
 
         # # Route input 1 to output 1
         # result = await matrix.route_input_to_output(1, 1)

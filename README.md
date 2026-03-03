@@ -118,6 +118,8 @@ Working torwards making it easy to run this efficiently for example by making it
   - `get_input_status_parsed()`
   - `get_output_status()`
   - `get_output_status_parsed()`
+  - `get_output_power_status()`
+  - `get_output_power_status_parsed()`
   - `get_hdcp_status()`
   - `get_downscaling_status()`
 - Control:

@@ -8,6 +8,9 @@ from hdmimatrix.hdmimatrix import (
     SOCKET_TIMEOUT,
     SOCKET_END_OF_DATA_TIMEOUT,
     SOCKET_RECEIVE_DELAY,
+    INPUT_COUNT,
+    OUTPUT_COUNT,
+    OUTPUT_POWER_COUNT,
 )
 
 
@@ -26,6 +29,15 @@ class TestConstants:
 
     def test_socket_receive_delay(self):
         assert SOCKET_RECEIVE_DELAY == 0.05
+
+    def test_input_count(self):
+        assert INPUT_COUNT == 4
+
+    def test_output_count(self):
+        assert OUTPUT_COUNT == 4
+
+    def test_output_power_count(self):
+        assert OUTPUT_POWER_COUNT == 8
 
 
 # --- Commands enum values ---
@@ -89,6 +101,9 @@ class TestCommandsValues:
     def test_hdbt_power_off_value(self):
         assert Commands.HDBT_POWER_OFF.value == "PHDBTOFF."
 
+    def test_status_output_power(self):
+        assert Commands.STATUS_OUTPUT_POWER.value == "STA_POUT."
+
 
 # --- Commands formatting ---
 
@@ -112,7 +127,7 @@ class TestCommandsFormatting:
 class TestCommandsEnumProperties:
 
     def test_member_count(self):
-        assert len(Commands) == 19
+        assert len(Commands) == 20
 
     def test_all_values_are_strings(self):
         for cmd in Commands:

@@ -6,12 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 ### Added
-- Added `get_output_power_status()` — queries the power on/off state of each output port (`STA_POUT.`).
-- Added `get_output_power_status_parsed()` — parses the `STA_POUT.` response into a `{port: bool}` dict.
 ### Changed
 ### Fixed
 ### Removed
 
+
+## [0.6.0] - 2026-03-03
+### Added
+- Added `get_output_power_status()` — queries the power on/off state of each output port (`STA_POUT.`).
+- Added `get_output_power_status_parsed()` — parses the `STA_POUT.` response into a `{port: bool}` dict.
+- Added `is_output_on(output_num)` — returns `True` if a specific output is powered on, with a 1-second cache to avoid spamming the device.
+- Added module-level constants `INPUT_COUNT`, `OUTPUT_COUNT`, and `OUTPUT_POWER_COUNT` for port range definitions.
+### Changed
+- `output_on()` and `output_off()` now accept outputs 1–8 (previously 1–4), covering both HDBaseT (1–4) and HDMI loop (5–8) outputs.
 
 ## [0.5.0] - 2026-03-02
 ### Added

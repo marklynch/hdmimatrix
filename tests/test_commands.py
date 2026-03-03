@@ -11,6 +11,7 @@ from hdmimatrix.hdmimatrix import (
     INPUT_COUNT,
     OUTPUT_COUNT,
     OUTPUT_POWER_COUNT,
+    OUTPUT_POWER_CACHE_TTL,
 )
 
 
@@ -38,6 +39,9 @@ class TestConstants:
 
     def test_output_power_count(self):
         assert OUTPUT_POWER_COUNT == 8
+
+    def test_output_power_cache_ttl(self):
+        assert OUTPUT_POWER_CACHE_TTL == 1.0
 
 
 # --- Commands enum values ---

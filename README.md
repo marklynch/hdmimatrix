@@ -107,6 +107,7 @@ Working torwards making it easy to run this efficiently for example by making it
 - Info:
   - `is_powered_on()`
   - `is_hdbt_powered_on()`
+  - `is_output_on(output_num)` — cached for 1 s
   - `get_device_name()`
   - `get_device_status()`
   - `get_device_type()`
@@ -126,8 +127,8 @@ Working torwards making it easy to run this efficiently for example by making it
   - `power_on()`
   - `power_off()`
   - `route_input_to_output(input, output)`
-  - `output_on(output)`
-  - `output_off(output)`
+  - `output_on(output)` — outputs 1–8 (1–4 HDBaseT, 5–8 HDMI loop)
+  - `output_off(output)` — outputs 1–8
   - `all_outputs_on()`
   - `all_outputs_off()`
   - `hdbt_power_on()`

@@ -18,6 +18,7 @@ SOCKET_RECEIVE_DELAY = 0.05 # delay between recieves
 INPUT_COUNT = 4          # number of HDMI input ports
 OUTPUT_COUNT = 4         # number of routing output ports (HDBT)
 OUTPUT_POWER_COUNT = 8   # number of power-controllable output ports (4 HDBT + 4 HDMI loop)
+OUTPUT_POWER_CACHE_TTL = 1.0  # seconds to cache output power status
 
 class Commands(Enum):
     POWERON = "PowerON."
@@ -66,6 +67,9 @@ class BaseHDMIMatrix(ABC):
         # eg 4x4 or 8x8
         self._input_count = INPUT_COUNT
         self._output_count = OUTPUT_COUNT
+
+        self._output_power_cache: Optional[dict] = None
+        self._output_power_cache_time: float = 0.0
 
         # Initialise logging if logger is not passed in.
         if logger is None:
@@ -352,6 +356,25 @@ class HDMIMatrix(BaseHDMIMatrix):
         """
         return "ON!" in self.get_hdbt_power_status()
 
+    def is_output_on(self, output_num: int) -> bool:
+        """Check whether a specific output port is powered on.
+
+        Caches the full power status for 1 second to avoid spamming the device
+        when called in a loop. Call get_output_power_status_parsed() directly if
+        you always want a fresh value.
+
+        Args:
+            output_num: Output port number (1 to output_power_count).
+
+        Returns:
+            True if the output is on, False if off or not found.
+        """
+        now = time.time()
+        if self._output_power_cache is None or (now - self._output_power_cache_time) > OUTPUT_POWER_CACHE_TTL:
+            self._output_power_cache = self.get_output_power_status_parsed()
+            self._output_power_cache_time = now
+        return self._output_power_cache.get(output_num, False)
+
     def get_input_status_parsed(self) -> dict:
         """Get input connection status as a dict mapping port number to bool."""
         return self.parse_input_status(self.get_input_status())
@@ -580,6 +603,25 @@ class AsyncHDMIMatrix(BaseHDMIMatrix):
         Returns True if the response contains 'ON!', False otherwise.
         """
         return "ON!" in await self.get_hdbt_power_status()
+
+    async def is_output_on(self, output_num: int) -> bool:
+        """Check whether a specific output port is powered on.
+
+        Caches the full power status for 1 second to avoid spamming the device
+        when called in a loop. Call get_output_power_status_parsed() directly if
+        you always want a fresh value.
+
+        Args:
+            output_num: Output port number (1 to output_power_count).
+
+        Returns:
+            True if the output is on, False if off or not found.
+        """
+        now = time.time()
+        if self._output_power_cache is None or (now - self._output_power_cache_time) > OUTPUT_POWER_CACHE_TTL:
+            self._output_power_cache = await self.get_output_power_status_parsed()
+            self._output_power_cache_time = now
+        return self._output_power_cache.get(output_num, False)
 
     async def get_input_status_parsed(self) -> dict:
         """Get input connection status as a dict mapping port number to bool."""

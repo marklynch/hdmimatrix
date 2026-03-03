@@ -488,6 +488,36 @@ class TestAsyncInfoMethods:
             result = await async_matrix.is_hdbt_powered_on()
         assert result is False
 
+    async def test_is_output_on_returns_true_when_on(self, async_matrix):
+        with patch.object(async_matrix, "get_output_power_status_parsed",
+                          new_callable=AsyncMock, return_value={1: True, 2: False}):
+            assert await async_matrix.is_output_on(1) is True
+
+    async def test_is_output_on_returns_false_when_off(self, async_matrix):
+        with patch.object(async_matrix, "get_output_power_status_parsed",
+                          new_callable=AsyncMock, return_value={1: True, 2: False}):
+            assert await async_matrix.is_output_on(2) is False
+
+    async def test_is_output_on_returns_false_for_unknown_port(self, async_matrix):
+        with patch.object(async_matrix, "get_output_power_status_parsed",
+                          new_callable=AsyncMock, return_value={1: True}):
+            assert await async_matrix.is_output_on(99) is False
+
+    async def test_is_output_on_caches_result(self, async_matrix):
+        with patch.object(async_matrix, "get_output_power_status_parsed",
+                          new_callable=AsyncMock, return_value={1: True}) as mock_parsed:
+            await async_matrix.is_output_on(1)
+            await async_matrix.is_output_on(1)
+        mock_parsed.assert_called_once()
+
+    async def test_is_output_on_refreshes_after_cache_expires(self, async_matrix):
+        with patch.object(async_matrix, "get_output_power_status_parsed",
+                          new_callable=AsyncMock, return_value={1: True}) as mock_parsed, \
+             patch("hdmimatrix.hdmimatrix.time.time", side_effect=[0.0, 2.0]):
+            await async_matrix.is_output_on(1)
+            await async_matrix.is_output_on(1)
+        assert mock_parsed.call_count == 2
+
 
 # --- Command methods ---
 

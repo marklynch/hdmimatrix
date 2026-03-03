@@ -357,6 +357,36 @@ class TestInfoMethods:
             result = sync_matrix.is_hdbt_powered_on()
         assert result is False
 
+    def test_is_output_on_returns_true_when_on(self, sync_matrix):
+        with patch.object(sync_matrix, "get_output_power_status_parsed",
+                          return_value={1: True, 2: False}):
+            assert sync_matrix.is_output_on(1) is True
+
+    def test_is_output_on_returns_false_when_off(self, sync_matrix):
+        with patch.object(sync_matrix, "get_output_power_status_parsed",
+                          return_value={1: True, 2: False}):
+            assert sync_matrix.is_output_on(2) is False
+
+    def test_is_output_on_returns_false_for_unknown_port(self, sync_matrix):
+        with patch.object(sync_matrix, "get_output_power_status_parsed",
+                          return_value={1: True}):
+            assert sync_matrix.is_output_on(99) is False
+
+    def test_is_output_on_caches_result(self, sync_matrix):
+        with patch.object(sync_matrix, "get_output_power_status_parsed",
+                          return_value={1: True}) as mock_parsed:
+            sync_matrix.is_output_on(1)
+            sync_matrix.is_output_on(1)
+        mock_parsed.assert_called_once()
+
+    def test_is_output_on_refreshes_after_cache_expires(self, sync_matrix):
+        with patch.object(sync_matrix, "get_output_power_status_parsed",
+                          return_value={1: True}) as mock_parsed, \
+             patch("hdmimatrix.hdmimatrix.time.time", side_effect=[0.0, 2.0]):
+            sync_matrix.is_output_on(1)
+            sync_matrix.is_output_on(1)
+        assert mock_parsed.call_count == 2
+
 
 # --- Command methods ---
 

@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from hdmimatrix.hdmimatrix import AsyncHDMIMatrix, SOCKET_RECV_BUFFER
+from hdmimatrix.hdmimatrix import AsyncHDMIMatrix, SOCKET_RECV_BUFFER, CECLogicalAddress, CECCommand
 
 from .conftest import TEST_HOST, TEST_PORT, WELCOME_DATA
 
@@ -581,3 +581,47 @@ class TestAsyncCommandMethods:
             result = await async_matrix.hdbt_power_off()
         mock_req.assert_called_once_with(b"PHDBTOFF.")
         assert result == "OK"
+
+
+# --- CEC commands ---
+
+class TestAsyncCECCommand:
+
+    async def test_send_cec_command_with_enums(self, async_matrix):
+        with patch.object(
+            async_matrix, "_process_request", new_callable=AsyncMock, return_value="OK"
+        ) as mock_req:
+            result = await async_matrix.send_cec_command(
+                "O", 5, CECLogicalAddress.PLAYBACK_1, CECLogicalAddress.TV,
+                CECCommand.DISPLAY_VOLUME_UP,
+            )
+        mock_req.assert_called_once_with(b"CECO05404441.")
+        assert result == "OK"
+
+    async def test_send_cec_command_with_raw_ints(self, async_matrix):
+        with patch.object(
+            async_matrix, "_process_request", new_callable=AsyncMock, return_value="OK"
+        ) as mock_req:
+            result = await async_matrix.send_cec_command(
+                "O", 3, 8, 0, CECCommand.DISPLAY_POWER_ON
+            )
+        mock_req.assert_called_once_with(b"CECO038004.")
+        assert result == "OK"
+
+    async def test_send_cec_command_input_direction(self, async_matrix):
+        with patch.object(
+            async_matrix, "_process_request", new_callable=AsyncMock, return_value="OK"
+        ) as mock_req:
+            await async_matrix.send_cec_command(
+                "I", 1, CECLogicalAddress.TV, CECLogicalAddress.PLAYBACK_1,
+                CECCommand.SOURCE_POWER_OFF,
+            )
+        mock_req.assert_called_once_with(b"CECI0104446C.")
+
+    async def test_send_cec_command_invalid_direction_raises(self, async_matrix):
+        with pytest.raises(ValueError, match="direction"):
+            await async_matrix.send_cec_command("X", 1, 0, 0, CECCommand.DISPLAY_POWER_ON)
+
+    async def test_send_cec_command_invalid_port_raises(self, async_matrix):
+        with pytest.raises(ValueError, match="port"):
+            await async_matrix.send_cec_command("O", 0, 0, 0, CECCommand.DISPLAY_POWER_ON)

@@ -9,7 +9,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from hdmimatrix.hdmimatrix import AsyncHDMIMatrix, HDMIMatrix
+from hdmimatrix.hdmimatrix import AsyncHDMIMatrix, HDMIMatrix, CECLogicalAddress, CECCommand
 
 from .conftest import (
     SAMPLE_INPUT_STATUS, SAMPLE_INPUT_STATUS_PARSED,
@@ -254,6 +254,83 @@ class TestParseVideoStatus:
         data = "Output 10 Switch To In 12!"
         result = sync_matrix.parse_video_status(data)
         assert result == {10: 12}
+
+
+# --- _build_cec_command ---
+
+class TestBuildCECCommand:
+
+    def test_output_volume_up_with_enums(self, sync_matrix):
+        # port=5, src=PLAYBACK_1(4), dst=TV(0) → header=(4<<4)|0=0x40="40"
+        result = sync_matrix._build_cec_command(
+            "O", 5, CECLogicalAddress.PLAYBACK_1, CECLogicalAddress.TV, CECCommand.DISPLAY_VOLUME_UP
+        )
+        assert result == b"CECO05404441."
+
+    def test_output_power_on_with_raw_ints(self, sync_matrix):
+        # port=3, src=8, dst=0 → header=(8<<4)|0=0x80="80", cmd="04"
+        result = sync_matrix._build_cec_command("O", 3, 8, 0, CECCommand.DISPLAY_POWER_ON)
+        assert result == b"CECO038004."
+
+    def test_input_source_power_off_with_enums(self, sync_matrix):
+        # port=1, src=TV(0), dst=PLAYBACK_1(4) → header=(0<<4)|4=0x04="04", cmd="446C"
+        result = sync_matrix._build_cec_command(
+            "I", 1, CECLogicalAddress.TV, CECLogicalAddress.PLAYBACK_1, CECCommand.SOURCE_POWER_OFF
+        )
+        assert result == b"CECI0104446C."
+
+    def test_output_power_off_standalone_opcode(self, sync_matrix):
+        # CECCommand.DISPLAY_POWER_OFF = "36" (standalone, no 0x44 prefix)
+        # port=1, src=PLAYBACK_1(4), dst=TV(0) → header=0x40="40"
+        result = sync_matrix._build_cec_command(
+            "O", 1, CECLogicalAddress.PLAYBACK_1, CECLogicalAddress.TV, CECCommand.DISPLAY_POWER_OFF
+        )
+        assert result == b"CECO014036."
+
+    def test_display_mute_with_enums(self, sync_matrix):
+        # port=2, src=PLAYBACK_1(4), dst=TV(0) → header=0x40="40", cmd="4443"
+        result = sync_matrix._build_cec_command(
+            "O", 2, CECLogicalAddress.PLAYBACK_1, CECLogicalAddress.TV, CECCommand.DISPLAY_MUTE
+        )
+        assert result == b"CECO02404443."
+
+    def test_port_boundary_1(self, sync_matrix):
+        result = sync_matrix._build_cec_command("O", 1, 0, 0, CECCommand.DISPLAY_POWER_ON)
+        assert result == b"CECO010004."
+
+    def test_port_boundary_16(self, sync_matrix):
+        result = sync_matrix._build_cec_command("O", 16, 0, 0, CECCommand.DISPLAY_POWER_ON)
+        assert result == b"CECO160004."
+
+    def test_lowercase_direction_normalized(self, sync_matrix):
+        result = sync_matrix._build_cec_command("o", 1, 0, 0, CECCommand.DISPLAY_POWER_ON)
+        assert result == b"CECO010004."
+
+    def test_invalid_direction_raises(self, sync_matrix):
+        with pytest.raises(ValueError, match="direction"):
+            sync_matrix._build_cec_command("X", 1, 0, 0, CECCommand.DISPLAY_POWER_ON)
+
+    def test_port_zero_raises(self, sync_matrix):
+        with pytest.raises(ValueError, match="port"):
+            sync_matrix._build_cec_command("O", 0, 0, 0, CECCommand.DISPLAY_POWER_ON)
+
+    def test_port_17_raises(self, sync_matrix):
+        with pytest.raises(ValueError, match="port"):
+            sync_matrix._build_cec_command("O", 17, 0, 0, CECCommand.DISPLAY_POWER_ON)
+
+    def test_src_addr_out_of_range_raises(self, sync_matrix):
+        with pytest.raises(ValueError, match="src_addr"):
+            sync_matrix._build_cec_command("O", 1, 16, 0, CECCommand.DISPLAY_POWER_ON)
+
+    def test_dst_addr_out_of_range_raises(self, sync_matrix):
+        with pytest.raises(ValueError, match="dst_addr"):
+            sync_matrix._build_cec_command("O", 1, 0, 16, CECCommand.DISPLAY_POWER_ON)
+
+    def test_raw_string_command(self, sync_matrix):
+        # Allow passing a raw hex string instead of enum
+        # port=1, src=4, dst=0 → header=0x40="40", cmd="4441"
+        result = sync_matrix._build_cec_command("O", 1, 4, 0, "4441")
+        assert result == b"CECO01404441."
 
 
 # --- Repr ---

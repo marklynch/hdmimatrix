@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 ### Added
+- Added `send_cec_command(direction, port, src_addr, dst_addr, command)` — sends a raw CEC command over HDMI to a connected source or display.
+- Added `CECLogicalAddress` enum for standard CEC logical addresses (TV, PLAYBACK_1, AUDIO_SYSTEM, BROADCAST, etc.).
+- Added `CECCommand` enum encoding the wire bytes for common CEC operations: `DISPLAY_POWER_ON`, `DISPLAY_POWER_OFF`, `DISPLAY_VOLUME_UP`, `DISPLAY_VOLUME_DOWN`, `DISPLAY_MUTE`, `SOURCE_POWER_ON`, `SOURCE_POWER_OFF`.
 ### Changed
 ### Fixed
 ### Removed

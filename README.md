@@ -89,6 +89,35 @@ with matrix:
     matrix.hdbt_power_off()
 ```
 
+### CEC Control
+
+```python
+from hdmimatrix import HDMIMatrix, CECLogicalAddress, CECCommand
+
+with HDMIMatrix("192.168.0.178") as matrix:
+    # Power on the display connected to output 1
+    # (matrix at logical addr 4 → TV at addr 0)
+    matrix.send_cec_command("O", 1, CECLogicalAddress.PLAYBACK_1, CECLogicalAddress.TV, CECCommand.DISPLAY_POWER_ON)
+
+    # Mute the display on output 2
+    matrix.send_cec_command("O", 2, CECLogicalAddress.PLAYBACK_1, CECLogicalAddress.TV, CECCommand.DISPLAY_MUTE)
+
+    # Power off an input source (e.g. Blu-ray on input 1)
+    matrix.send_cec_command("I", 1, CECLogicalAddress.TV, CECLogicalAddress.PLAYBACK_1, CECCommand.SOURCE_POWER_OFF)
+```
+
+Available `CECCommand` values:
+
+| Command | Wire bytes | Description |
+|---|---|---|
+| `SOURCE_POWER_ON` | `446D` | Turn on an input source |
+| `SOURCE_POWER_OFF` | `446C` | Turn off an input source |
+| `DISPLAY_VOLUME_UP` | `4441` | Volume up on a display |
+| `DISPLAY_VOLUME_DOWN` | `4442` | Volume down on a display |
+| `DISPLAY_MUTE` | `4443` | Mute a display |
+| `DISPLAY_POWER_ON` | `04` | Power on a display (Image View On) |
+| `DISPLAY_POWER_OFF` | `36` | Power off a display (Standby) |
+
 ### Power management
 Working torwards making it easy to run this efficiently for example by making it easy to power off overnight here are some measurements.
 - Overall power usage ~ 60w
@@ -130,6 +159,10 @@ Working torwards making it easy to run this efficiently for example by making it
   - `all_outputs_off()`
   - `hdbt_power_on()`
   - `hdbt_power_off()`
+- CEC:
+  - `send_cec_command(direction, port, src_addr, dst_addr, command)`
+  - `CECLogicalAddress` enum (TV, PLAYBACK_1, AUDIO_SYSTEM, BROADCAST, …)
+  - `CECCommand` enum (DISPLAY_POWER_ON/OFF, DISPLAY_VOLUME_UP/DOWN, DISPLAY_MUTE, SOURCE_POWER_ON/OFF)
 
 ## Development
 

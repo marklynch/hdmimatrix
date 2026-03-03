@@ -1,1 +1,1 @@
-from .hdmimatrix import HDMIMatrix, AsyncHDMIMatrix
+from .hdmimatrix import HDMIMatrix, AsyncHDMIMatrix, CECLogicalAddress, CECCommand

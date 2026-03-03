@@ -8,7 +8,7 @@ from enum import Enum
 from typing import Optional
 
 
-__all__ = ["HDMIMatrix", "AsyncHDMIMatrix", "Commands"]
+__all__ = ["HDMIMatrix", "AsyncHDMIMatrix", "Commands", "CECLogicalAddress", "CECCommand"]
 
 SOCKET_RECV_BUFFER = 2048 # size of socket recieve buffer
 SOCKET_TIMEOUT = 5.0
@@ -35,6 +35,34 @@ class Commands(Enum):
     ALL_OUTPUTS_OFF = "$OUT00."
     HDBT_POWER_ON = "PHDBTON."
     HDBT_POWER_OFF = "PHDBTOFF."
+
+
+class CECLogicalAddress(Enum):
+    TV           = 0
+    RECORDING_1  = 1
+    RECORDING_2  = 2
+    TUNER_1      = 3
+    PLAYBACK_1   = 4
+    AUDIO_SYSTEM = 5
+    TUNER_2      = 6
+    TUNER_3      = 7
+    PLAYBACK_2   = 8
+    BROADCAST    = 15
+
+
+class CECCommand(Enum):
+    """Wire bytes appended after the CEC header.
+
+    Values starting with '44' include the User Control Pressed opcode (0x44).
+    Values without it are standalone CEC opcodes.
+    """
+    SOURCE_POWER_ON     = "446D"  # User Control Pressed + Power On Function
+    SOURCE_POWER_OFF    = "446C"  # User Control Pressed + Power Off Function
+    DISPLAY_VOLUME_UP   = "4441"  # User Control Pressed + Volume Up
+    DISPLAY_VOLUME_DOWN = "4442"  # User Control Pressed + Volume Down
+    DISPLAY_MUTE        = "4443"  # User Control Pressed + Mute
+    DISPLAY_POWER_ON    = "04"    # Image View On (standalone opcode)
+    DISPLAY_POWER_OFF   = "36"    # Standby (standalone opcode)
 
 
 class BaseHDMIMatrix(ABC):
@@ -161,6 +189,30 @@ class BaseHDMIMatrix(ABC):
         if not 1 <= output <= self.output_count:
             raise ValueError(f"Output must be between 1 and {self.output_count}")
         return Commands.OUTPUT_OFF.value.format(output).encode("ascii")
+
+    def _build_cec_command(
+        self,
+        direction: str,
+        port: int,
+        src_addr: "int | CECLogicalAddress",
+        dst_addr: "int | CECLogicalAddress",
+        command: "str | CECCommand",
+    ) -> bytes:
+        """Validate params and build a raw CEC command byte string."""
+        direction = direction.upper()
+        if direction not in ("I", "O"):
+            raise ValueError("direction must be 'I' or 'O'")
+        if not 1 <= port <= 16:
+            raise ValueError("port must be between 1 and 16")
+        src = src_addr.value if isinstance(src_addr, CECLogicalAddress) else src_addr
+        dst = dst_addr.value if isinstance(dst_addr, CECLogicalAddress) else dst_addr
+        if not 0 <= src <= 15:
+            raise ValueError("src_addr must be between 0 and 15")
+        if not 0 <= dst <= 15:
+            raise ValueError("dst_addr must be between 0 and 15")
+        header = f"{(src << 4) | dst:02X}"
+        cmd_str = command.value if isinstance(command, CECCommand) else command
+        return f"CEC{direction}{port:02d}{header}{cmd_str}.".encode("ascii")
 
     def parse_input_status(self, status_response: str) -> dict:
         """
@@ -370,6 +422,30 @@ class HDMIMatrix(BaseHDMIMatrix):
             ValueError: If output is out of range.
         """
         return self._process_request(self._build_output_off_command(output))
+
+    def send_cec_command(
+        self,
+        direction: str,
+        port: int,
+        src_addr: "int | CECLogicalAddress",
+        dst_addr: "int | CECLogicalAddress",
+        command: "str | CECCommand",
+    ) -> str:
+        """Send a CEC command to a connected device.
+
+        Args:
+            direction: 'I' for input source, 'O' for output display.
+            port: Port number (1–16).
+            src_addr: Logical address of the sender (0–15 or CECLogicalAddress).
+            dst_addr: Logical address of the target (0–15 or CECLogicalAddress).
+            command: Command bytes to send (str or CECCommand).
+
+        Raises:
+            ValueError: If any parameter is out of range.
+        """
+        return self._process_request(
+            self._build_cec_command(direction, port, src_addr, dst_addr, command)
+        )
 
     # Internal methods
     def _process_request(self, request: bytes) -> str:
@@ -595,6 +671,30 @@ class AsyncHDMIMatrix(BaseHDMIMatrix):
             ValueError: If output is out of range.
         """
         return await self._process_request(self._build_output_off_command(output))
+
+    async def send_cec_command(
+        self,
+        direction: str,
+        port: int,
+        src_addr: "int | CECLogicalAddress",
+        dst_addr: "int | CECLogicalAddress",
+        command: "str | CECCommand",
+    ) -> str:
+        """Send a CEC command to a connected device.
+
+        Args:
+            direction: 'I' for input source, 'O' for output display.
+            port: Port number (1–16).
+            src_addr: Logical address of the sender (0–15 or CECLogicalAddress).
+            dst_addr: Logical address of the target (0–15 or CECLogicalAddress).
+            command: Command bytes to send (str or CECCommand).
+
+        Raises:
+            ValueError: If any parameter is out of range.
+        """
+        return await self._process_request(
+            self._build_cec_command(direction, port, src_addr, dst_addr, command)
+        )
 
     # Internal methods
     async def _process_request(self, request: bytes) -> str:

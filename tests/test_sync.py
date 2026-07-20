@@ -387,6 +387,33 @@ class TestInfoMethods:
             sync_matrix.is_output_on(1)
         assert mock_parsed.call_count == 2
 
+    def test_output_on_invalidates_cache(self, sync_matrix):
+        with patch.object(sync_matrix, "_process_request", return_value="OK"), \
+             patch.object(sync_matrix, "get_output_power_status_parsed",
+                          side_effect=[{3: False}, {3: True}]) as mock_parsed:
+            assert sync_matrix.is_output_on(3) is False  # populates cache
+            sync_matrix.output_on(3)                      # must invalidate cache
+            assert sync_matrix.is_output_on(3) is True    # re-queries device
+        assert mock_parsed.call_count == 2
+
+    def test_output_off_invalidates_cache(self, sync_matrix):
+        with patch.object(sync_matrix, "_process_request", return_value="OK"), \
+             patch.object(sync_matrix, "get_output_power_status_parsed",
+                          side_effect=[{3: True}, {3: False}]) as mock_parsed:
+            assert sync_matrix.is_output_on(3) is True
+            sync_matrix.output_off(3)
+            assert sync_matrix.is_output_on(3) is False
+        assert mock_parsed.call_count == 2
+
+    def test_all_outputs_off_invalidates_cache(self, sync_matrix):
+        with patch.object(sync_matrix, "_process_request", return_value="OK"), \
+             patch.object(sync_matrix, "get_output_power_status_parsed",
+                          side_effect=[{3: True}, {3: False}]) as mock_parsed:
+            assert sync_matrix.is_output_on(3) is True
+            sync_matrix.all_outputs_off()
+            assert sync_matrix.is_output_on(3) is False
+        assert mock_parsed.call_count == 2
+
 
 # --- Command methods ---
 

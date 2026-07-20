@@ -129,23 +129,43 @@ class BaseHDMIMatrix(ABC):
         "hdbt_power_off":         ("Power off the HDBaseT receivers/transmitters.", Commands.HDBT_POWER_OFF),
     }
 
+    # Auto-generated commands that change output power state and therefore
+    # must invalidate the is_output_on() cache after running.
+    _OUTPUT_POWER_MUTATING = frozenset({"all_outputs_on", "all_outputs_off"})
+
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
         is_async = asyncio.iscoroutinefunction(cls.__dict__.get("_process_request"))
         for name, (doc, cmd) in BaseHDMIMatrix._SIMPLE_COMMANDS.items():
             if name not in cls.__dict__:
                 cmd_bytes = cmd.value.encode("ascii")
+                invalidates = name in BaseHDMIMatrix._OUTPUT_POWER_MUTATING
                 if is_async:
-                    async def method(self, _cmd=cmd_bytes):
-                        return await self._process_request(_cmd)
+                    async def method(self, _cmd=cmd_bytes, _invalidates=invalidates):
+                        result = await self._process_request(_cmd)
+                        if _invalidates:
+                            self._invalidate_output_power_cache()
+                        return result
                 else:
-                    def method(self, _cmd=cmd_bytes):
-                        return self._process_request(_cmd)
+                    def method(self, _cmd=cmd_bytes, _invalidates=invalidates):
+                        result = self._process_request(_cmd)
+                        if _invalidates:
+                            self._invalidate_output_power_cache()
+                        return result
                 method.__name__ = name
                 method.__qualname__ = f"{cls.__qualname__}.{name}"
                 method.__doc__ = doc
                 method.__annotations__ = {"return": str}
                 setattr(cls, name, method)
+
+    def _invalidate_output_power_cache(self):
+        """Clear the cached output-power status.
+
+        Called after any command that changes output power state so the next
+        is_output_on() query reflects reality instead of a stale cached value.
+        """
+        self._output_power_cache = None
+        self._output_power_cache_time = 0.0
 
     def _validate_routing_params(self, input: int, output: int):
         """Validate input and output parameters for routing"""
@@ -412,7 +432,9 @@ class HDMIMatrix(BaseHDMIMatrix):
         Raises:
             ValueError: If output is out of range.
         """
-        return self._process_request(self._build_output_on_command(output))
+        result = self._process_request(self._build_output_on_command(output))
+        self._invalidate_output_power_cache()
+        return result
 
     def output_off(self, output: int) -> str:
         """Disable a specific HDMI output port.
@@ -423,7 +445,9 @@ class HDMIMatrix(BaseHDMIMatrix):
         Raises:
             ValueError: If output is out of range.
         """
-        return self._process_request(self._build_output_off_command(output))
+        result = self._process_request(self._build_output_off_command(output))
+        self._invalidate_output_power_cache()
+        return result
 
     # Internal methods
     def _process_request(self, request: bytes) -> str:
@@ -660,7 +684,9 @@ class AsyncHDMIMatrix(BaseHDMIMatrix):
         Raises:
             ValueError: If output is out of range.
         """
-        return await self._process_request(self._build_output_on_command(output))
+        result = await self._process_request(self._build_output_on_command(output))
+        self._invalidate_output_power_cache()
+        return result
 
     async def output_off(self, output: int) -> str:
         """Disable a specific HDMI output port.
@@ -671,7 +697,9 @@ class AsyncHDMIMatrix(BaseHDMIMatrix):
         Raises:
             ValueError: If output is out of range.
         """
-        return await self._process_request(self._build_output_off_command(output))
+        result = await self._process_request(self._build_output_off_command(output))
+        self._invalidate_output_power_cache()
+        return result
 
     # Internal methods
     async def _process_request(self, request: bytes) -> str:

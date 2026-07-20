@@ -518,6 +518,39 @@ class TestAsyncInfoMethods:
             await async_matrix.is_output_on(1)
         assert mock_parsed.call_count == 2
 
+    async def test_output_on_invalidates_cache(self, async_matrix):
+        with patch.object(async_matrix, "_process_request",
+                          new_callable=AsyncMock, return_value="OK"), \
+             patch.object(async_matrix, "get_output_power_status_parsed",
+                          new_callable=AsyncMock,
+                          side_effect=[{3: False}, {3: True}]) as mock_parsed:
+            assert await async_matrix.is_output_on(3) is False  # populates cache
+            await async_matrix.output_on(3)                     # must invalidate cache
+            assert await async_matrix.is_output_on(3) is True   # re-queries device
+        assert mock_parsed.call_count == 2
+
+    async def test_output_off_invalidates_cache(self, async_matrix):
+        with patch.object(async_matrix, "_process_request",
+                          new_callable=AsyncMock, return_value="OK"), \
+             patch.object(async_matrix, "get_output_power_status_parsed",
+                          new_callable=AsyncMock,
+                          side_effect=[{3: True}, {3: False}]) as mock_parsed:
+            assert await async_matrix.is_output_on(3) is True
+            await async_matrix.output_off(3)
+            assert await async_matrix.is_output_on(3) is False
+        assert mock_parsed.call_count == 2
+
+    async def test_all_outputs_off_invalidates_cache(self, async_matrix):
+        with patch.object(async_matrix, "_process_request",
+                          new_callable=AsyncMock, return_value="OK"), \
+             patch.object(async_matrix, "get_output_power_status_parsed",
+                          new_callable=AsyncMock,
+                          side_effect=[{3: True}, {3: False}]) as mock_parsed:
+            assert await async_matrix.is_output_on(3) is True
+            await async_matrix.all_outputs_off()
+            assert await async_matrix.is_output_on(3) is False
+        assert mock_parsed.call_count == 2
+
 
 # --- Command methods ---
 

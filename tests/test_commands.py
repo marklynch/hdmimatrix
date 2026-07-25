@@ -1,19 +1,17 @@
 """Tests for the Commands enum and module-level constants."""
 
-import pytest
 
 from hdmimatrix.hdmimatrix import (
-    Commands,
-    SOCKET_RECV_BUFFER,
-    SOCKET_TIMEOUT,
-    SOCKET_END_OF_DATA_TIMEOUT,
-    SOCKET_RECEIVE_DELAY,
     INPUT_COUNT,
     OUTPUT_COUNT,
-    OUTPUT_POWER_COUNT,
     OUTPUT_POWER_CACHE_TTL,
+    OUTPUT_POWER_COUNT,
+    SOCKET_END_OF_DATA_TIMEOUT,
+    SOCKET_RECEIVE_DELAY,
+    SOCKET_RECV_BUFFER,
+    SOCKET_TIMEOUT,
+    Commands,
 )
-
 
 # --- Constants ---
 

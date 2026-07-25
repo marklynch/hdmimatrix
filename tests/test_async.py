@@ -5,10 +5,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from hdmimatrix.hdmimatrix import AsyncHDMIMatrix, SOCKET_RECV_BUFFER
+from hdmimatrix.hdmimatrix import AsyncHDMIMatrix
 
 from .conftest import TEST_HOST, TEST_PORT, WELCOME_DATA
-
 
 # --- Helpers for _read_response tests ---
 
@@ -103,12 +102,11 @@ class TestAsyncConnection:
             "hdmimatrix.hdmimatrix.asyncio.open_connection",
             new_callable=AsyncMock,
             return_value=(mock_reader, mock_writer),
+        ), patch(
+            "hdmimatrix.hdmimatrix.asyncio.wait_for",
+            side_effect=fake_wait_for,
         ):
-            with patch(
-                "hdmimatrix.hdmimatrix.asyncio.wait_for",
-                side_effect=fake_wait_for,
-            ):
-                result = await matrix.connect()
+            result = await matrix.connect()
 
         assert result is True
 
@@ -190,10 +188,9 @@ class TestAsyncContextManager:
             "hdmimatrix.hdmimatrix.asyncio.open_connection",
             new_callable=AsyncMock,
             side_effect=ConnectionRefusedError(),
-        ):
-            with pytest.raises(RuntimeError, match="Failed to connect"):
-                async with matrix:
-                    pass  # pragma: no cover
+        ), pytest.raises(RuntimeError, match="Failed to connect"):
+            async with matrix:
+                pass  # pragma: no cover
 
     async def test_disconnects_on_exception(self):
         matrix = AsyncHDMIMatrix(TEST_HOST, TEST_PORT)
@@ -208,10 +205,9 @@ class TestAsyncContextManager:
             "hdmimatrix.hdmimatrix.asyncio.open_connection",
             new_callable=AsyncMock,
             return_value=(mock_reader, mock_writer),
-        ):
-            with pytest.raises(ValueError):
-                async with matrix:
-                    raise ValueError("test error")
+        ), pytest.raises(ValueError):
+            async with matrix:
+                raise ValueError("test error")
 
         assert not matrix.is_connected
         mock_writer.close.assert_called()
@@ -272,9 +268,9 @@ class TestAsyncProcessRequest:
 
     async def test_auto_reconnect_fails_raises_error(self):
         matrix = AsyncHDMIMatrix(TEST_HOST, TEST_PORT, auto_reconnect=True)
-        with patch.object(matrix, "connect", new_callable=AsyncMock, return_value=False):
-            with pytest.raises(RuntimeError, match="auto-reconnect failed"):
-                await matrix._process_request(b"STA.")
+        with patch.object(matrix, "connect", new_callable=AsyncMock, return_value=False), \
+             pytest.raises(RuntimeError, match="auto-reconnect failed"):
+            await matrix._process_request(b"STA.")
 
     async def test_retries_on_send_failure(self, connected_async_matrix):
         matrix, mock_reader, mock_writer = connected_async_matrix
@@ -298,9 +294,9 @@ class TestAsyncProcessRequest:
         matrix, mock_reader, mock_writer = connected_async_matrix
         mock_writer.drain = AsyncMock(side_effect=OSError("Broken pipe"))
 
-        with patch.object(matrix, "connect", new_callable=AsyncMock, return_value=False):
-            with pytest.raises(RuntimeError, match="Connection lost"):
-                await matrix._process_request(b"STA.")
+        with patch.object(matrix, "connect", new_callable=AsyncMock, return_value=False), \
+             pytest.raises(RuntimeError, match="Connection lost"):
+            await matrix._process_request(b"STA.")
 
     async def test_no_retry_when_reconnect_disabled(self):
         matrix = AsyncHDMIMatrix(TEST_HOST, TEST_PORT, auto_reconnect=False)
@@ -335,10 +331,10 @@ class TestAsyncReadResponse:
         times = iter([0.0, 0.0, 0.05, 0.6, 1.0, 1.5, 2.0, 2.5])
         mock_loop.time = MagicMock(side_effect=lambda: next(times))
 
-        with patch("hdmimatrix.hdmimatrix.asyncio.wait_for", side_effect=fake_wait_for):
-            with patch("hdmimatrix.hdmimatrix.asyncio.get_running_loop", return_value=mock_loop):
-                with patch("hdmimatrix.hdmimatrix.asyncio.sleep", side_effect=noop_sleep):
-                    result = await matrix._read_response()
+        with patch("hdmimatrix.hdmimatrix.asyncio.wait_for", side_effect=fake_wait_for), \
+             patch("hdmimatrix.hdmimatrix.asyncio.get_running_loop", return_value=mock_loop), \
+             patch("hdmimatrix.hdmimatrix.asyncio.sleep", side_effect=noop_sleep):
+            result = await matrix._read_response()
 
         assert result == "Hello World"
 
@@ -350,10 +346,10 @@ class TestAsyncReadResponse:
         times = iter([0.0, 0.0, 0.05, 0.1, 0.15, 0.7, 1.0, 1.5, 2.0, 2.5])
         mock_loop.time = MagicMock(side_effect=lambda: next(times))
 
-        with patch("hdmimatrix.hdmimatrix.asyncio.wait_for", side_effect=fake_wait_for):
-            with patch("hdmimatrix.hdmimatrix.asyncio.get_running_loop", return_value=mock_loop):
-                with patch("hdmimatrix.hdmimatrix.asyncio.sleep", side_effect=noop_sleep):
-                    result = await matrix._read_response()
+        with patch("hdmimatrix.hdmimatrix.asyncio.wait_for", side_effect=fake_wait_for), \
+             patch("hdmimatrix.hdmimatrix.asyncio.get_running_loop", return_value=mock_loop), \
+             patch("hdmimatrix.hdmimatrix.asyncio.sleep", side_effect=noop_sleep):
+            result = await matrix._read_response()
 
         assert result == "Part1 Part2"
 
@@ -365,10 +361,10 @@ class TestAsyncReadResponse:
         times = iter([0.0, 0.0, 0.1, 0.2, 0.5, 1.0, 1.5, 2.0, 2.5])
         mock_loop.time = MagicMock(side_effect=lambda: next(times))
 
-        with patch("hdmimatrix.hdmimatrix.asyncio.wait_for", side_effect=fake_wait_for):
-            with patch("hdmimatrix.hdmimatrix.asyncio.get_running_loop", return_value=mock_loop):
-                with patch("hdmimatrix.hdmimatrix.asyncio.sleep", side_effect=noop_sleep):
-                    result = await matrix._read_response()
+        with patch("hdmimatrix.hdmimatrix.asyncio.wait_for", side_effect=fake_wait_for), \
+             patch("hdmimatrix.hdmimatrix.asyncio.get_running_loop", return_value=mock_loop), \
+             patch("hdmimatrix.hdmimatrix.asyncio.sleep", side_effect=noop_sleep):
+            result = await matrix._read_response()
 
         assert result == ""
 
@@ -386,10 +382,10 @@ class TestAsyncReadResponse:
         times = iter([0.0, 0.0, 0.05, 0.1, 0.15, 0.2, 0.5, 1.0, 1.5, 2.0])
         mock_loop.time = MagicMock(side_effect=lambda: next(times))
 
-        with patch("hdmimatrix.hdmimatrix.asyncio.wait_for", side_effect=fake_wait_for):
-            with patch("hdmimatrix.hdmimatrix.asyncio.get_running_loop", return_value=mock_loop):
-                with patch("hdmimatrix.hdmimatrix.asyncio.sleep", side_effect=noop_sleep):
-                    result = await matrix._read_response()
+        with patch("hdmimatrix.hdmimatrix.asyncio.wait_for", side_effect=fake_wait_for), \
+             patch("hdmimatrix.hdmimatrix.asyncio.get_running_loop", return_value=mock_loop), \
+             patch("hdmimatrix.hdmimatrix.asyncio.sleep", side_effect=noop_sleep):
+            result = await matrix._read_response()
 
         assert result == "Partial"
 

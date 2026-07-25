@@ -7,7 +7,6 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Optional
 
-
 __all__ = ["HDMIMatrix", "AsyncHDMIMatrix", "Commands"]
 
 SOCKET_RECV_BUFFER = 2048 # size of socket recieve buffer
@@ -147,18 +146,18 @@ class BaseHDMIMatrix(ABC):
                 method.__annotations__ = {"return": str}
                 setattr(cls, name, method)
 
-    def _validate_routing_params(self, input: int, output: int):
+    def _validate_routing_params(self, input_num: int, output_num: int):
         """Validate input and output parameters for routing"""
-        if not 1 <= input <= self.input_count:
+        if not 1 <= input_num <= self.input_count:
             raise ValueError(f"Input must be between 1 and {self.input_count}")
 
-        if not 1 <= output <= self.output_count:
+        if not 1 <= output_num <= self.output_count:
             raise ValueError(f"Output must be between 1 and {self.output_count}")
 
-    def _build_route_command(self, input: int, output: int) -> bytes:
+    def _build_route_command(self, input_num: int, output_num: int) -> bytes:
         """Validate routing params and build the route command bytes."""
-        self._validate_routing_params(input, output)
-        return Commands.ROUTE_OUTPUT.value.format(output, input).encode("ascii")
+        self._validate_routing_params(input_num, output_num)
+        return Commands.ROUTE_OUTPUT.value.format(output_num, input_num).encode("ascii")
 
     def _build_output_on_command(self, output: int) -> bytes:
         """Validate output param and build the output-on command bytes."""
@@ -391,7 +390,9 @@ class HDMIMatrix(BaseHDMIMatrix):
         """Get video status and return parsed routing dictionary."""
         return self.parse_video_status(self.get_video_status())
 
-    def route_input_to_output(self, input: int, output: int) -> str:
+    # `input` shadows a builtin, but it is part of the public API and renaming it
+    # would break callers using keyword arguments.
+    def route_input_to_output(self, input: int, output: int) -> str:  # noqa: A002
         """Route an HDMI input to an HDMI output.
 
         Args:
@@ -562,7 +563,7 @@ class AsyncHDMIMatrix(BaseHDMIMatrix):
             # Read any welcome data to clear the buffer
             try:
                 data = await asyncio.wait_for(
-                    self.reader.read(SOCKET_RECV_BUFFER), 
+                    self.reader.read(SOCKET_RECV_BUFFER),
                     timeout=1.0
                 )
                 self.logger.debug(f"Discarding: {data}")
@@ -639,7 +640,9 @@ class AsyncHDMIMatrix(BaseHDMIMatrix):
         """Get video status and return parsed routing dictionary."""
         return self.parse_video_status(await self.get_video_status())
 
-    async def route_input_to_output(self, input: int, output: int) -> str:
+    # `input` shadows a builtin, but it is part of the public API and renaming it
+    # would break callers using keyword arguments.
+    async def route_input_to_output(self, input: int, output: int) -> str:  # noqa: A002
         """Route an HDMI input to an HDMI output.
 
         Args:

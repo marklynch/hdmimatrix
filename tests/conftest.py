@@ -7,10 +7,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from hdmimatrix.hdmimatrix import (
+    SOCKET_TIMEOUT,
     AsyncHDMIMatrix,
     HDMIMatrix,
-    SOCKET_RECV_BUFFER,
-    SOCKET_TIMEOUT,
 )
 
 # --- Test constants ---
@@ -71,7 +70,7 @@ def make_recv_side_effect(data_chunks):
             chunk = chunks[index]
             index += 1
             return chunk
-        raise socket.timeout
+        raise TimeoutError
 
     return side_effect
 

@@ -16,7 +16,8 @@ Releases are published to PyPI automatically by GitHub Actions
 
 The workflow then:
 
-1. Runs the full test matrix (Python 3.9–3.13). Nothing is published if it fails.
+1. Runs the full test matrix (Python 3.10–3.13), lint, and type check. Nothing is
+   published if any of them fail.
 2. Verifies the tag matches the version in `pyproject.toml`.
 3. Builds the sdist + wheel and runs `twine check`.
 4. Publishes to PyPI via trusted publishing (OIDC — no API token stored in the repo).

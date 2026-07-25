@@ -4,9 +4,10 @@ import re
 import socket
 import time
 from abc import ABC, abstractmethod
+from collections.abc import Awaitable, Callable
 from enum import Enum
-from typing import Optional
-
+from types import TracebackType
+from typing import TYPE_CHECKING, Any
 
 __all__ = ["HDMIMatrix", "AsyncHDMIMatrix", "Commands"]
 
@@ -43,11 +44,35 @@ class Commands(Enum):
     HDBT_POWER_OFF = "PHDBTOFF."
 
 
+def _make_sync_command(cmd_bytes: bytes, name: str, qualname: str, doc: str) -> Callable[[Any], str]:
+    """Build a synchronous method that sends a fixed command and returns the response."""
+    def method(self: Any) -> str:
+        response: str = self._process_request(cmd_bytes)
+        return response
+
+    method.__name__ = name
+    method.__qualname__ = qualname
+    method.__doc__ = doc
+    return method
+
+
+def _make_async_command(cmd_bytes: bytes, name: str, qualname: str, doc: str) -> Callable[[Any], Awaitable[str]]:
+    """Build an asynchronous method that sends a fixed command and returns the response."""
+    async def method(self: Any) -> str:
+        response: str = await self._process_request(cmd_bytes)
+        return response
+
+    method.__name__ = name
+    method.__qualname__ = qualname
+    method.__doc__ = doc
+    return method
+
+
 class BaseHDMIMatrix(ABC):
     """Base class for HDMI Matrix controllers with shared functionality"""
 
     def __init__(self, host: str = "192.168.0.178", port: int = 4001,
-                  logger: Optional[logging.Logger] = None,
+                  logger: logging.Logger | None = None,
                   auto_reconnect: bool = True):
         """
         Initialize the matrix switch controller
@@ -68,7 +93,7 @@ class BaseHDMIMatrix(ABC):
         self._input_count = INPUT_COUNT
         self._output_count = OUTPUT_COUNT
 
-        self._output_power_cache: Optional[dict] = None
+        self._output_power_cache: dict[int, bool] | None = None
         self._output_power_cache_time: float = 0.0
 
         # Initialise logging if logger is not passed in.
@@ -95,7 +120,7 @@ class BaseHDMIMatrix(ABC):
         return self._input_count
 
     @input_count.setter
-    def input_count(self, value: int):
+    def input_count(self, value: int) -> None:
         raise RuntimeError(f"input_count is read-only — attempted to set it to {value}")
 
     @property
@@ -104,7 +129,7 @@ class BaseHDMIMatrix(ABC):
         return self._output_count
 
     @output_count.setter
-    def output_count(self, value: int):
+    def output_count(self, value: int) -> None:
         raise RuntimeError(f"output_count is read-only — attempted to set it to {value}")
 
     # Declarative mapping: method name -> (docstring, Commands member).
@@ -129,36 +154,28 @@ class BaseHDMIMatrix(ABC):
         "hdbt_power_off":         ("Power off the HDBaseT receivers/transmitters.", Commands.HDBT_POWER_OFF),
     }
 
-    def __init_subclass__(cls, **kwargs):
+    def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
         is_async = asyncio.iscoroutinefunction(cls.__dict__.get("_process_request"))
         for name, (doc, cmd) in BaseHDMIMatrix._SIMPLE_COMMANDS.items():
             if name not in cls.__dict__:
                 cmd_bytes = cmd.value.encode("ascii")
-                if is_async:
-                    async def method(self, _cmd=cmd_bytes):
-                        return await self._process_request(_cmd)
-                else:
-                    def method(self, _cmd=cmd_bytes):
-                        return self._process_request(_cmd)
-                method.__name__ = name
-                method.__qualname__ = f"{cls.__qualname__}.{name}"
-                method.__doc__ = doc
-                method.__annotations__ = {"return": str}
-                setattr(cls, name, method)
+                qualname = f"{cls.__qualname__}.{name}"
+                make = _make_async_command if is_async else _make_sync_command
+                setattr(cls, name, make(cmd_bytes, name, qualname, doc))
 
-    def _validate_routing_params(self, input: int, output: int):
+    def _validate_routing_params(self, input_num: int, output_num: int) -> None:
         """Validate input and output parameters for routing"""
-        if not 1 <= input <= self.input_count:
+        if not 1 <= input_num <= self.input_count:
             raise ValueError(f"Input must be between 1 and {self.input_count}")
 
-        if not 1 <= output <= self.output_count:
+        if not 1 <= output_num <= self.output_count:
             raise ValueError(f"Output must be between 1 and {self.output_count}")
 
-    def _build_route_command(self, input: int, output: int) -> bytes:
+    def _build_route_command(self, input_num: int, output_num: int) -> bytes:
         """Validate routing params and build the route command bytes."""
-        self._validate_routing_params(input, output)
-        return Commands.ROUTE_OUTPUT.value.format(output, input).encode("ascii")
+        self._validate_routing_params(input_num, output_num)
+        return Commands.ROUTE_OUTPUT.value.format(output_num, input_num).encode("ascii")
 
     def _build_output_on_command(self, output: int) -> bytes:
         """Validate output param and build the output-on command bytes."""
@@ -172,7 +189,7 @@ class BaseHDMIMatrix(ABC):
             raise ValueError(f"Output must be between 1 and {OUTPUT_POWER_COUNT}")
         return Commands.OUTPUT_OFF.value.format(output).encode("ascii")
 
-    def parse_input_status(self, status_response: str) -> dict:
+    def parse_input_status(self, status_response: str) -> dict[int, bool]:
         """
         Parse STA_IN response into a connection-status dictionary.
 
@@ -197,10 +214,12 @@ class BaseHDMIMatrix(ABC):
             m = re.match(r'^LINK\s+((?:[YN]\s*)+)$', line, re.IGNORECASE)
             if m and ports:
                 values = m.group(1).split()
-                return {p: v.upper() == 'Y' for p, v in zip(ports, values)}
+                # strict=False: a truncated or malformed device response should
+                # yield the ports it did report, not raise.
+                return {p: v.upper() == 'Y' for p, v in zip(ports, values, strict=False)}
         return {}
 
-    def parse_output_status(self, status_response: str) -> dict:
+    def parse_output_status(self, status_response: str) -> dict[int, bool]:
         """
         Parse STA_OUT response into a connection-status dictionary.
 
@@ -227,10 +246,12 @@ class BaseHDMIMatrix(ABC):
             m = re.match(r'^LINK\s+((?:[YN]\s*)+)$', line, re.IGNORECASE)
             if m and ports:
                 values = m.group(1).split()
-                return {p: v.upper() == 'Y' for p, v in zip(ports, values)}
+                # strict=False: a truncated or malformed device response should
+                # yield the ports it did report, not raise.
+                return {p: v.upper() == 'Y' for p, v in zip(ports, values, strict=False)}
         return {}
 
-    def parse_output_power_status(self, status_response: str) -> dict:
+    def parse_output_power_status(self, status_response: str) -> dict[int, bool]:
         """
         Parse STA_POUT response into a power-state dictionary.
 
@@ -251,7 +272,7 @@ class BaseHDMIMatrix(ABC):
                 result[int(m.group(2))] = m.group(1).upper() == 'ON'
         return result
 
-    def parse_video_status(self, status_response: str) -> dict:
+    def parse_video_status(self, status_response: str) -> dict[int, int]:
         """
         Parse video status response into a routing dictionary
 
@@ -296,10 +317,10 @@ class HDMIMatrix(BaseHDMIMatrix):
     """Synchronous controller for AVGear (and possibly other) HDMI Matrix switches"""
 
     def __init__(self, host: str = "192.168.0.178", port: int = 4001,
-                  logger: Optional[logging.Logger] = None,
+                  logger: logging.Logger | None = None,
                   auto_reconnect: bool = True):
         super().__init__(host, port, logger, auto_reconnect)
-        self.connection: Optional[socket.socket] = None
+        self.connection: socket.socket | None = None
 
     @property
     def is_connected(self) -> bool:
@@ -318,8 +339,8 @@ class HDMIMatrix(BaseHDMIMatrix):
             # Discard any welcome banner; ignore timeout if device sends none.
             try:
                 data = self.connection.recv(SOCKET_RECV_BUFFER)
-                self.logger.debug(f"Discarding: {data}")
-            except socket.timeout:
+                self.logger.debug(f"Discarding: {data!r}")
+            except TimeoutError:
                 pass  # No welcome data — that's fine.
 
             return True
@@ -331,7 +352,7 @@ class HDMIMatrix(BaseHDMIMatrix):
                 self.connection = None
             return False
 
-    def disconnect(self):
+    def disconnect(self) -> None:
         """Close the connection"""
         if self.connection:
             self.connection.close()
@@ -340,6 +361,27 @@ class HDMIMatrix(BaseHDMIMatrix):
 
     # Simple command methods (get_device_name, power_on, etc.) are
     # auto-generated by BaseHDMIMatrix.__init_subclass__.
+
+    if TYPE_CHECKING:
+        # Declared for type checkers and editors only; the runtime versions
+        # (including their docstrings) are generated from _SIMPLE_COMMANDS.
+        def get_device_name(self) -> str: ...
+        def get_device_status(self) -> str: ...
+        def get_device_type(self) -> str: ...
+        def get_device_version(self) -> str: ...
+        def get_video_status(self) -> str: ...
+        def get_hdbt_power_status(self) -> str: ...
+        def get_input_status(self) -> str: ...
+        def get_output_status(self) -> str: ...
+        def get_hdcp_status(self) -> str: ...
+        def get_downscaling_status(self) -> str: ...
+        def get_output_power_status(self) -> str: ...
+        def power_on(self) -> str: ...
+        def power_off(self) -> str: ...
+        def all_outputs_on(self) -> str: ...
+        def all_outputs_off(self) -> str: ...
+        def hdbt_power_on(self) -> str: ...
+        def hdbt_power_off(self) -> str: ...
 
     def is_powered_on(self) -> bool:
         """Check whether the matrix is powered on.
@@ -391,7 +433,9 @@ class HDMIMatrix(BaseHDMIMatrix):
         """Get video status and return parsed routing dictionary."""
         return self.parse_video_status(self.get_video_status())
 
-    def route_input_to_output(self, input: int, output: int) -> str:
+    # `input` shadows a builtin, but it is part of the public API and renaming it
+    # would break callers using keyword arguments.
+    def route_input_to_output(self, input: int, output: int) -> str:  # noqa: A002
         """Route an HDMI input to an HDMI output.
 
         Args:
@@ -426,6 +470,12 @@ class HDMIMatrix(BaseHDMIMatrix):
         return self._process_request(self._build_output_off_command(output))
 
     # Internal methods
+    def _require_connection(self) -> socket.socket:
+        """Return the active socket, or raise if the connection has gone away."""
+        if self.connection is None:
+            raise RuntimeError("Not connected. Call connect() first.")
+        return self.connection
+
     def _process_request(self, request: bytes) -> str:
         if not self.is_connected:
             if self.auto_reconnect:
@@ -436,18 +486,18 @@ class HDMIMatrix(BaseHDMIMatrix):
                 raise RuntimeError("Not connected. Call connect() first.")
 
         try:
-            self.connection.send(request)
-            self.logger.debug(f'Send Command: {request}')
+            self._require_connection().send(request)
+            self.logger.debug(f'Send Command: {request!r}')
             return self._read_response()
-        except (OSError, socket.timeout) as e:
+        except (TimeoutError, OSError) as e:
             self.logger.warning(f"Connection error during request: {e}")
             self.disconnect()
             if self.auto_reconnect:
                 self.logger.info("Attempting auto-reconnect...")
                 if self.connect():
                     self.logger.info("Reconnected, retrying request...")
-                    self.connection.send(request)
-                    self.logger.debug(f'Send Command (retry): {request}')
+                    self._require_connection().send(request)
+                    self.logger.debug(f'Send Command (retry): {request!r}')
                     return self._read_response()
             raise RuntimeError(f"Connection lost during request: {e}") from e
 
@@ -494,7 +544,7 @@ class HDMIMatrix(BaseHDMIMatrix):
                             break
                         time.sleep(SOCKET_RECEIVE_DELAY)  # Small delay before next attempt
 
-                except socket.timeout:
+                except TimeoutError:
                     # No data available right now
                     if response_parts and (time.time() - last_data_time) > SOCKET_END_OF_DATA_TIMEOUT:
                         # We got some data but nothing new for 0.5 seconds
@@ -522,13 +572,18 @@ class HDMIMatrix(BaseHDMIMatrix):
             self.connection.settimeout(original_timeout)
 
     # Context manager support
-    def __enter__(self):
+    def __enter__(self) -> "HDMIMatrix":
         """Synchronous context manager entry"""
         if not self.connect():
             raise RuntimeError("Failed to connect")
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         """Synchronous context manager exit"""
         self.disconnect()
 
@@ -537,12 +592,12 @@ class AsyncHDMIMatrix(BaseHDMIMatrix):
     """Asynchronous controller for AVGear (and possibly other) HDMI Matrix switches"""
 
     def __init__(self, host: str = "192.168.0.178", port: int = 4001,
-                  logger: Optional[logging.Logger] = None,
+                  logger: logging.Logger | None = None,
                   auto_reconnect: bool = True):
         super().__init__(host, port, logger, auto_reconnect)
-        self.reader: Optional[asyncio.StreamReader] = None
-        self.writer: Optional[asyncio.StreamWriter] = None
-        self._connection_lock: Optional[asyncio.Lock] = None
+        self.reader: asyncio.StreamReader | None = None
+        self.writer: asyncio.StreamWriter | None = None
+        self._connection_lock: asyncio.Lock | None = None
 
     @property
     def is_connected(self) -> bool:
@@ -562,10 +617,10 @@ class AsyncHDMIMatrix(BaseHDMIMatrix):
             # Read any welcome data to clear the buffer
             try:
                 data = await asyncio.wait_for(
-                    self.reader.read(SOCKET_RECV_BUFFER), 
+                    self.reader.read(SOCKET_RECV_BUFFER),
                     timeout=1.0
                 )
-                self.logger.debug(f"Discarding: {data}")
+                self.logger.debug(f"Discarding: {data!r}")
             except asyncio.TimeoutError:
                 # No welcome data, that's fine
                 pass
@@ -576,7 +631,7 @@ class AsyncHDMIMatrix(BaseHDMIMatrix):
             self.logger.error(f"Async connection failed: {e}")
             return False
 
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         """Close the async connection"""
         if self.writer:
             self.writer.close()
@@ -588,6 +643,27 @@ class AsyncHDMIMatrix(BaseHDMIMatrix):
 
     # Simple command methods (get_device_name, power_on, etc.) are
     # auto-generated by BaseHDMIMatrix.__init_subclass__.
+
+    if TYPE_CHECKING:
+        # Declared for type checkers and editors only; the runtime versions
+        # (including their docstrings) are generated from _SIMPLE_COMMANDS.
+        async def get_device_name(self) -> str: ...
+        async def get_device_status(self) -> str: ...
+        async def get_device_type(self) -> str: ...
+        async def get_device_version(self) -> str: ...
+        async def get_video_status(self) -> str: ...
+        async def get_hdbt_power_status(self) -> str: ...
+        async def get_input_status(self) -> str: ...
+        async def get_output_status(self) -> str: ...
+        async def get_hdcp_status(self) -> str: ...
+        async def get_downscaling_status(self) -> str: ...
+        async def get_output_power_status(self) -> str: ...
+        async def power_on(self) -> str: ...
+        async def power_off(self) -> str: ...
+        async def all_outputs_on(self) -> str: ...
+        async def all_outputs_off(self) -> str: ...
+        async def hdbt_power_on(self) -> str: ...
+        async def hdbt_power_off(self) -> str: ...
 
     async def is_powered_on(self) -> bool:
         """Check whether the matrix is powered on.
@@ -639,7 +715,9 @@ class AsyncHDMIMatrix(BaseHDMIMatrix):
         """Get video status and return parsed routing dictionary."""
         return self.parse_video_status(await self.get_video_status())
 
-    async def route_input_to_output(self, input: int, output: int) -> str:
+    # `input` shadows a builtin, but it is part of the public API and renaming it
+    # would break callers using keyword arguments.
+    async def route_input_to_output(self, input: int, output: int) -> str:  # noqa: A002
         """Route an HDMI input to an HDMI output.
 
         Args:
@@ -674,6 +752,12 @@ class AsyncHDMIMatrix(BaseHDMIMatrix):
         return await self._process_request(self._build_output_off_command(output))
 
     # Internal methods
+    def _require_writer(self) -> asyncio.StreamWriter:
+        """Return the active stream writer, or raise if the connection has gone away."""
+        if self.writer is None:
+            raise RuntimeError("Not connected. Call connect() first.")
+        return self.writer
+
     async def _process_request(self, request: bytes) -> str:
         if not self.is_connected:
             if self.auto_reconnect:
@@ -688,9 +772,10 @@ class AsyncHDMIMatrix(BaseHDMIMatrix):
 
         async with self._connection_lock:
             try:
-                self.writer.write(request)
-                await self.writer.drain()
-                self.logger.debug(f'Send Command: {request}')
+                writer = self._require_writer()
+                writer.write(request)
+                await writer.drain()
+                self.logger.debug(f'Send Command: {request!r}')
                 return await self._read_response()
             except (OSError, asyncio.TimeoutError) as e:
                 self.logger.warning(f"Connection error during request: {e}")
@@ -699,9 +784,10 @@ class AsyncHDMIMatrix(BaseHDMIMatrix):
                     self.logger.info("Attempting auto-reconnect...")
                     if await self.connect():
                         self.logger.info("Reconnected, retrying request...")
-                        self.writer.write(request)
-                        await self.writer.drain()
-                        self.logger.debug(f'Send Command (retry): {request}')
+                        writer = self._require_writer()
+                        writer.write(request)
+                        await writer.drain()
+                        self.logger.debug(f'Send Command (retry): {request!r}')
                         return await self._read_response()
                 raise RuntimeError(f"Connection lost during request: {e}") from e
 
@@ -765,12 +851,17 @@ class AsyncHDMIMatrix(BaseHDMIMatrix):
             return ""
 
     # Async context manager support
-    async def __aenter__(self):
+    async def __aenter__(self) -> "AsyncHDMIMatrix":
         """Async context manager entry"""
         if not await self.connect():
             raise RuntimeError("Failed to connect")
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         """Async context manager exit"""
         await self.disconnect()

@@ -47,6 +47,11 @@ line-length = 120
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "B", "A", "SIM"]
+# SIM117 (combine nested `with` statements) is disabled while we support Python
+# 3.9: parenthesized context managers need 3.10, so the only way to combine long
+# context managers is backslash continuation, which reads worse than nesting.
+# Re-enable once the minimum supported version is 3.10.
+ignore = ["SIM117"]
 
 [tool.coverage.run]
 source = ["hdmimatrix"]

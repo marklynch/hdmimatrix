@@ -1,10 +1,12 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+# setuptools>=77 is required by the PEP 639 `license` / `license-files` fields below.
+requires = ["setuptools>=77", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "hdmimatrix"
-version = "0.6.0"
+# Derived from the git tag by setuptools-scm — see [tool.setuptools_scm] below.
+dynamic = ["version"]
 authors = [
   { name="Mark Lynch", email="marklynch@gmail.com" },
 ]
@@ -30,6 +32,14 @@ dev = [
 [project.urls]
 Homepage = "https://github.com/marklynch/hdmimatrix"
 Issues = "https://github.com/marklynch/hdmimatrix/issues"
+
+[tool.setuptools_scm]
+# The version comes from the git tag: `v0.7.0` builds as 0.7.0. Builds from an
+# untagged commit get a development version derived from the last tag.
+# fallback_version applies only when there is no git metadata at all (e.g. an
+# unpacked tarball); the release workflow checks the built version against the
+# tag, so a release can never silently publish it.
+fallback_version = "0.0.0"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

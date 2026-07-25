@@ -6,8 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 ### Added
+### Changed
+### Fixed
+### Removed
+
+
+## [0.7.0] - 2026-07-25
+### Added
 - GitHub Actions CI (tests on Python 3.10–3.13, lint, type check) and an automated
   PyPI release workflow triggered by pushing a `v*` tag.
+- The package version is now derived from the git tag by `setuptools-scm`, so it no
+  longer needs to be maintained by hand in `pyproject.toml`.
 ### Changed
 - Minimum supported Python is now 3.10 (was 3.9). Python 3.9 reached end of life in
   October 2025.
@@ -18,6 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `parse_output_power_status()` now declare precise return types (`dict[int, int]` /
   `dict[int, bool]`) instead of a bare `dict`.
 ### Fixed
+- `build-system.requires` now asks for `setuptools>=77`, which the PEP 639 `license`
+  and `license-files` fields need. The previous floor of 61 would fail metadata
+  generation.
 ### Removed
 - Dropped support for Python 3.9.
 

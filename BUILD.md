@@ -25,6 +25,11 @@ The workflow then:
 3. Verifies the built distributions carry the tag's version, which catches a
    checkout that did not have the tag available.
 4. Publishes to PyPI via trusted publishing (OIDC — no API token stored in the repo).
+5. Creates the GitHub release for the tag, with the sdist and wheel attached and
+   the matching `CHANGELOG.md` section as the body. The release is titled after the
+   tag (`v0.7.0`); edit it afterwards if you want a descriptive title. If the
+   changelog has no section for the version, GitHub's generated notes are used
+   instead and the run logs a warning.
 
 Builds from an untagged commit get a development version derived from the last tag
 (for example `0.6.1.dev5+gf791817`), so a local `python3 -m build` will not produce

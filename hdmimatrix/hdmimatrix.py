@@ -5,7 +5,6 @@ import socket
 import time
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Optional
 
 __all__ = ["HDMIMatrix", "AsyncHDMIMatrix", "Commands"]
 
@@ -46,7 +45,7 @@ class BaseHDMIMatrix(ABC):
     """Base class for HDMI Matrix controllers with shared functionality"""
 
     def __init__(self, host: str = "192.168.0.178", port: int = 4001,
-                  logger: Optional[logging.Logger] = None,
+                  logger: logging.Logger | None = None,
                   auto_reconnect: bool = True):
         """
         Initialize the matrix switch controller
@@ -67,7 +66,7 @@ class BaseHDMIMatrix(ABC):
         self._input_count = INPUT_COUNT
         self._output_count = OUTPUT_COUNT
 
-        self._output_power_cache: Optional[dict] = None
+        self._output_power_cache: dict | None = None
         self._output_power_cache_time: float = 0.0
 
         # Initialise logging if logger is not passed in.
@@ -196,7 +195,9 @@ class BaseHDMIMatrix(ABC):
             m = re.match(r'^LINK\s+((?:[YN]\s*)+)$', line, re.IGNORECASE)
             if m and ports:
                 values = m.group(1).split()
-                return {p: v.upper() == 'Y' for p, v in zip(ports, values)}
+                # strict=False: a truncated or malformed device response should
+                # yield the ports it did report, not raise.
+                return {p: v.upper() == 'Y' for p, v in zip(ports, values, strict=False)}
         return {}
 
     def parse_output_status(self, status_response: str) -> dict:
@@ -226,7 +227,9 @@ class BaseHDMIMatrix(ABC):
             m = re.match(r'^LINK\s+((?:[YN]\s*)+)$', line, re.IGNORECASE)
             if m and ports:
                 values = m.group(1).split()
-                return {p: v.upper() == 'Y' for p, v in zip(ports, values)}
+                # strict=False: a truncated or malformed device response should
+                # yield the ports it did report, not raise.
+                return {p: v.upper() == 'Y' for p, v in zip(ports, values, strict=False)}
         return {}
 
     def parse_output_power_status(self, status_response: str) -> dict:
@@ -295,10 +298,10 @@ class HDMIMatrix(BaseHDMIMatrix):
     """Synchronous controller for AVGear (and possibly other) HDMI Matrix switches"""
 
     def __init__(self, host: str = "192.168.0.178", port: int = 4001,
-                  logger: Optional[logging.Logger] = None,
+                  logger: logging.Logger | None = None,
                   auto_reconnect: bool = True):
         super().__init__(host, port, logger, auto_reconnect)
-        self.connection: Optional[socket.socket] = None
+        self.connection: socket.socket | None = None
 
     @property
     def is_connected(self) -> bool:
@@ -318,7 +321,7 @@ class HDMIMatrix(BaseHDMIMatrix):
             try:
                 data = self.connection.recv(SOCKET_RECV_BUFFER)
                 self.logger.debug(f"Discarding: {data}")
-            except socket.timeout:
+            except TimeoutError:
                 pass  # No welcome data — that's fine.
 
             return True
@@ -440,7 +443,7 @@ class HDMIMatrix(BaseHDMIMatrix):
             self.connection.send(request)
             self.logger.debug(f'Send Command: {request}')
             return self._read_response()
-        except (OSError, socket.timeout) as e:
+        except (TimeoutError, OSError) as e:
             self.logger.warning(f"Connection error during request: {e}")
             self.disconnect()
             if self.auto_reconnect:
@@ -495,7 +498,7 @@ class HDMIMatrix(BaseHDMIMatrix):
                             break
                         time.sleep(SOCKET_RECEIVE_DELAY)  # Small delay before next attempt
 
-                except socket.timeout:
+                except TimeoutError:
                     # No data available right now
                     if response_parts and (time.time() - last_data_time) > SOCKET_END_OF_DATA_TIMEOUT:
                         # We got some data but nothing new for 0.5 seconds
@@ -538,12 +541,12 @@ class AsyncHDMIMatrix(BaseHDMIMatrix):
     """Asynchronous controller for AVGear (and possibly other) HDMI Matrix switches"""
 
     def __init__(self, host: str = "192.168.0.178", port: int = 4001,
-                  logger: Optional[logging.Logger] = None,
+                  logger: logging.Logger | None = None,
                   auto_reconnect: bool = True):
         super().__init__(host, port, logger, auto_reconnect)
-        self.reader: Optional[asyncio.StreamReader] = None
-        self.writer: Optional[asyncio.StreamWriter] = None
-        self._connection_lock: Optional[asyncio.Lock] = None
+        self.reader: asyncio.StreamReader | None = None
+        self.writer: asyncio.StreamWriter | None = None
+        self._connection_lock: asyncio.Lock | None = None
 
     @property
     def is_connected(self) -> bool:

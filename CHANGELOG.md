@@ -6,9 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 ### Added
+- GitHub Actions CI (tests on Python 3.10–3.13, lint, type check) and an automated
+  PyPI release workflow triggered by pushing a `v*` tag.
 ### Changed
+- Minimum supported Python is now 3.10 (was 3.9). Python 3.9 reached end of life in
+  October 2025.
 ### Fixed
 ### Removed
+- Dropped support for Python 3.9.
 
 
 ## [0.6.0] - 2026-03-03

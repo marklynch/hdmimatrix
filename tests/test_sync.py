@@ -43,7 +43,7 @@ class TestConnection:
     def test_connect_failure_timeout(self):
         matrix = HDMIMatrix(TEST_HOST, TEST_PORT)
         mock_sock = MagicMock()
-        mock_sock.connect.side_effect = socket.timeout("Connection timed out")
+        mock_sock.connect.side_effect = TimeoutError("Connection timed out")
 
         with patch("hdmimatrix.hdmimatrix.socket.socket", return_value=mock_sock):
             result = matrix.connect()
@@ -91,9 +91,11 @@ class TestContextManager:
         mock_sock = MagicMock()
         mock_sock.recv.return_value = WELCOME_DATA
 
-        with patch("hdmimatrix.hdmimatrix.socket.socket", return_value=mock_sock):
-            with matrix:
-                assert matrix.is_connected
+        with (
+            patch("hdmimatrix.hdmimatrix.socket.socket", return_value=mock_sock),
+            matrix,
+        ):
+            assert matrix.is_connected
         assert not matrix.is_connected
 
     def test_raises_on_connect_failure(self):
@@ -101,20 +103,24 @@ class TestContextManager:
         mock_sock = MagicMock()
         mock_sock.connect.side_effect = ConnectionRefusedError()
 
-        with patch("hdmimatrix.hdmimatrix.socket.socket", return_value=mock_sock):
-            with pytest.raises(RuntimeError, match="Failed to connect"):
-                with matrix:
-                    pass  # pragma: no cover
+        with (
+            patch("hdmimatrix.hdmimatrix.socket.socket", return_value=mock_sock),
+            pytest.raises(RuntimeError, match="Failed to connect"),
+            matrix,
+        ):
+            pass  # pragma: no cover
 
     def test_disconnects_on_exception(self):
         matrix = HDMIMatrix(TEST_HOST, TEST_PORT)
         mock_sock = MagicMock()
         mock_sock.recv.return_value = WELCOME_DATA
 
-        with patch("hdmimatrix.hdmimatrix.socket.socket", return_value=mock_sock):
-            with pytest.raises(ValueError):
-                with matrix:
-                    raise ValueError("test error")
+        with (
+            patch("hdmimatrix.hdmimatrix.socket.socket", return_value=mock_sock),
+            pytest.raises(ValueError),
+            matrix,
+        ):
+            raise ValueError("test error")
         assert not matrix.is_connected
         mock_sock.close.assert_called()
 
@@ -132,8 +138,10 @@ class TestProcessRequest:
         matrix, mock_sock = connected_sync_matrix
         mock_sock.recv.side_effect = make_recv_side_effect([b"OK\r\n"])
 
-        with patch("hdmimatrix.hdmimatrix.time.time") as mock_time, \
-             patch("hdmimatrix.hdmimatrix.time.sleep"):
+        with (
+            patch("hdmimatrix.hdmimatrix.time.time") as mock_time,
+            patch("hdmimatrix.hdmimatrix.time.sleep"),
+        ):
             mock_time.side_effect = [0.0, 0.0, 0.05, 0.6, 1.0, 1.5, 2.0, 2.5]
             matrix._process_request(b"STA.")
 
@@ -143,8 +151,10 @@ class TestProcessRequest:
         matrix, mock_sock = connected_sync_matrix
         mock_sock.recv.side_effect = make_recv_side_effect([b"Device OK\r\n"])
 
-        with patch("hdmimatrix.hdmimatrix.time.time") as mock_time, \
-             patch("hdmimatrix.hdmimatrix.time.sleep"):
+        with (
+            patch("hdmimatrix.hdmimatrix.time.time") as mock_time,
+            patch("hdmimatrix.hdmimatrix.time.sleep"),
+        ):
             mock_time.side_effect = [0.0, 0.0, 0.05, 0.6, 1.0, 1.5, 2.0, 2.5]
             result = matrix._process_request(b"STA.")
 
@@ -153,8 +163,10 @@ class TestProcessRequest:
     def test_auto_reconnects_when_not_connected(self):
         matrix = HDMIMatrix(TEST_HOST, TEST_PORT, auto_reconnect=True)
         # Not connected, auto_reconnect should call connect() then process
-        with patch.object(matrix, "connect", return_value=True) as mock_connect, \
-             patch.object(matrix, "_read_response", return_value="OK"):
+        with (
+            patch.object(matrix, "connect", return_value=True) as mock_connect,
+            patch.object(matrix, "_read_response", return_value="OK"),
+        ):
             # After connect, simulate connected state
             mock_sock = MagicMock()
             def set_connected():
@@ -170,17 +182,21 @@ class TestProcessRequest:
 
     def test_auto_reconnect_fails_raises_error(self):
         matrix = HDMIMatrix(TEST_HOST, TEST_PORT, auto_reconnect=True)
-        with patch.object(matrix, "connect", return_value=False):
-            with pytest.raises(RuntimeError, match="auto-reconnect failed"):
-                matrix._process_request(b"STA.")
+        with (
+            patch.object(matrix, "connect", return_value=False),
+            pytest.raises(RuntimeError, match="auto-reconnect failed"),
+        ):
+            matrix._process_request(b"STA.")
 
     def test_retries_on_send_failure(self, connected_sync_matrix):
         matrix, mock_sock = connected_sync_matrix
         # First send raises OSError, reconnect succeeds, retry succeeds
         mock_sock.send.side_effect = [OSError("Broken pipe"), None]
 
-        with patch.object(matrix, "connect", return_value=True) as mock_connect, \
-             patch.object(matrix, "_read_response", return_value="OK"):
+        with (
+            patch.object(matrix, "connect", return_value=True) as mock_connect,
+            patch.object(matrix, "_read_response", return_value="OK"),
+        ):
             def restore_connection():
                 matrix.connection = mock_sock
                 return True
@@ -195,9 +211,11 @@ class TestProcessRequest:
         matrix, mock_sock = connected_sync_matrix
         mock_sock.send.side_effect = OSError("Broken pipe")
 
-        with patch.object(matrix, "connect", return_value=False):
-            with pytest.raises(RuntimeError, match="Connection lost"):
-                matrix._process_request(b"STA.")
+        with (
+            patch.object(matrix, "connect", return_value=False),
+            pytest.raises(RuntimeError, match="Connection lost"),
+        ):
+            matrix._process_request(b"STA.")
 
     def test_no_retry_when_reconnect_disabled(self):
         matrix = HDMIMatrix(TEST_HOST, TEST_PORT, auto_reconnect=False)
@@ -217,8 +235,10 @@ class TestReadResponse:
         matrix, mock_sock = connected_sync_matrix
         mock_sock.recv.side_effect = make_recv_side_effect([b"Hello World\r\n"])
 
-        with patch("hdmimatrix.hdmimatrix.time.time") as mock_time, \
-             patch("hdmimatrix.hdmimatrix.time.sleep"):
+        with (
+            patch("hdmimatrix.hdmimatrix.time.time") as mock_time,
+            patch("hdmimatrix.hdmimatrix.time.sleep"),
+        ):
             mock_time.side_effect = [0.0, 0.0, 0.05, 0.6, 1.0, 1.5, 2.0, 2.5]
             result = matrix._read_response()
 
@@ -228,8 +248,10 @@ class TestReadResponse:
         matrix, mock_sock = connected_sync_matrix
         mock_sock.recv.side_effect = make_recv_side_effect([b"Part1 ", b"Part2\r\n"])
 
-        with patch("hdmimatrix.hdmimatrix.time.time") as mock_time, \
-             patch("hdmimatrix.hdmimatrix.time.sleep"):
+        with (
+            patch("hdmimatrix.hdmimatrix.time.time") as mock_time,
+            patch("hdmimatrix.hdmimatrix.time.sleep"),
+        ):
             # Two successful reads, then timeout triggers end-of-data
             mock_time.side_effect = [0.0, 0.0, 0.05, 0.1, 0.15, 0.7, 1.0, 1.5, 2.0]
             result = matrix._read_response()
@@ -240,8 +262,10 @@ class TestReadResponse:
         matrix, mock_sock = connected_sync_matrix
         mock_sock.recv.side_effect = socket.timeout
 
-        with patch("hdmimatrix.hdmimatrix.time.time") as mock_time, \
-             patch("hdmimatrix.hdmimatrix.time.sleep"):
+        with (
+            patch("hdmimatrix.hdmimatrix.time.time") as mock_time,
+            patch("hdmimatrix.hdmimatrix.time.sleep"),
+        ):
             # Jump past the total timeout
             mock_time.side_effect = [0.0, 0.0, 0.1, 0.2, 0.3, 0.5, 1.0, 1.5, 2.0, 2.5]
             result = matrix._read_response()
@@ -258,8 +282,10 @@ class TestReadResponse:
         mock_sock.gettimeout.return_value = 5.0
         mock_sock.recv.side_effect = make_recv_side_effect([b"OK"])
 
-        with patch("hdmimatrix.hdmimatrix.time.time") as mock_time, \
-             patch("hdmimatrix.hdmimatrix.time.sleep"):
+        with (
+            patch("hdmimatrix.hdmimatrix.time.time") as mock_time,
+            patch("hdmimatrix.hdmimatrix.time.sleep"),
+        ):
             mock_time.side_effect = [0.0, 0.0, 0.05, 0.6, 1.0, 1.5, 2.0, 2.5]
             matrix._read_response()
 
@@ -272,8 +298,10 @@ class TestReadResponse:
         matrix, mock_sock = connected_sync_matrix
         mock_sock.recv.side_effect = make_recv_side_effect([b"  Device OK  \r\n"])
 
-        with patch("hdmimatrix.hdmimatrix.time.time") as mock_time, \
-             patch("hdmimatrix.hdmimatrix.time.sleep"):
+        with (
+            patch("hdmimatrix.hdmimatrix.time.time") as mock_time,
+            patch("hdmimatrix.hdmimatrix.time.sleep"),
+        ):
             mock_time.side_effect = [0.0, 0.0, 0.05, 0.6, 1.0, 1.5, 2.0, 2.5]
             result = matrix._read_response()
 
@@ -379,9 +407,10 @@ class TestInfoMethods:
         mock_parsed.assert_called_once()
 
     def test_is_output_on_refreshes_after_cache_expires(self, sync_matrix):
-        with patch.object(sync_matrix, "get_output_power_status_parsed",
-                          return_value={1: True}) as mock_parsed, \
-             patch("hdmimatrix.hdmimatrix.time.time", side_effect=[0.0, 2.0]):
+        with (
+            patch.object(sync_matrix, "get_output_power_status_parsed", return_value={1: True}) as mock_parsed,
+            patch("hdmimatrix.hdmimatrix.time.time", side_effect=[0.0, 2.0]),
+        ):
             sync_matrix.is_output_on(1)
             sync_matrix.is_output_on(1)
         assert mock_parsed.call_count == 2

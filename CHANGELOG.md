@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Minimum supported Python is now 3.10 (was 3.9). Python 3.9 reached end of life in
   October 2025.
+- The package is now fully type annotated and passes `mypy` cleanly. The
+  auto-generated command methods (`get_device_name()`, `power_on()`, …) are declared
+  for type checkers, so editors offer completion and type checking for them.
+- `parse_video_status()`, `parse_input_status()`, `parse_output_status()` and
+  `parse_output_power_status()` now declare precise return types (`dict[int, int]` /
+  `dict[int, bool]`) instead of a bare `dict`.
 ### Fixed
 ### Removed
 - Dropped support for Python 3.9.

@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - GitHub Actions CI (tests on Python 3.10–3.13, lint, type check) and an automated
   PyPI release workflow triggered by pushing a `v*` tag.
+- The package version is now derived from the git tag by `setuptools-scm`, so it no
+  longer needs to be maintained by hand in `pyproject.toml`.
 ### Changed
 - Minimum supported Python is now 3.10 (was 3.9). Python 3.9 reached end of life in
   October 2025.
